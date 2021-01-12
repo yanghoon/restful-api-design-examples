@@ -19,10 +19,41 @@
               class="elevation-1"
             >
             <template v-slot:item.glutenfree="{ item }">
-              <v-simple-checkbox
-                v-model="item.glutenfree"
-              ></v-simple-checkbox>
+              <div class="d-flex justify-center">
+                <v-checkbox v-model="item.tags" value="glutenfree"></v-checkbox>
+              </div>
             </template>
+            <template v-slot:item.lowfat="{ item }">
+              <div class="d-flex justify-center">
+                <v-checkbox v-model="item.tags" value="lowfat"></v-checkbox>
+              </div>
+            </template>
+            <template v-slot:item.saltfree="{ item }">
+              <div class="d-flex justify-center">
+                <v-checkbox v-model="item.tags" value="saltfree"></v-checkbox>
+              </div>
+            </template>
+            <template v-slot:item.tags="{ item }">
+              {{ JSON.stringify(item.tags, null, null, 2) }}
+            </template>
+            <!--
+            <template v-slot:item.tags="{ item }">
+              <v-row>
+                <v-col>
+                  <v-checkbox dense v-model="item.tags" label="Gluten-Free" value="glutenfree"></v-checkbox>
+                </v-col>
+                <v-col>
+                  <v-checkbox dense v-model="item.tags" label="Low-Fat" value="low-fat"></v-checkbox>
+                </v-col>
+                <v-col>
+                  <v-checkbox dense v-model="item.tags" label="Salt-Free" value="salt-free"></v-checkbox>
+                </v-col>
+                <v-col>
+                  {{ JSON.stringify(item.tags, null, null, 2) }}
+                </v-col>
+              </v-row>
+            </template>
+            -->
           </v-data-table>
         </v-container>
       </v-main>
@@ -39,13 +70,16 @@
       data: function () {
         return {
           headers: [
-            { text: 'Dessert (100g serving)', align: 'start', sortable: false, value: 'name', },
+            { text: 'Dessert (100g serving)', align: 'start', sortable: false, value: 'name' },
             { text: 'Calories', value: 'calories' },
             { text: 'Fat (g)', value: 'fat' },
             { text: 'Carbs (g)', value: 'carbs' },
             { text: 'Protein (g)', value: 'protein' },
             { text: 'Iron (%)', value: 'iron' },
-            { text: 'Gluten-Free', value: 'glutenfree' },
+            { text: 'Gluten-Free', align: 'center', value: 'glutenfree' },
+            { text: 'Low-Fat', align: 'center', value: 'lowfat' },
+            { text: 'Salt-Free', align: 'center', value: 'saltfree' },
+            { text: 'Tags', value: 'tags' },
           ],
           desserts: storage.fetch(),
         }
