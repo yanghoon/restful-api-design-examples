@@ -14,48 +14,25 @@
         <v-container>
             <v-data-table
               :headers="headers"
-              :items="desserts"
+              :items="items"
               :items-per-page="10"
               dense
               class="elevation-1"
             >
-            <template #item.glutenfree="{ item }">
+            <template #item.tags="scope">
+              {{ JSON.stringify(scope.item.tags, null, null, 2) }}
+            </template>
+            <template #item.checkbox="{ item, header }">
               <!-- <div class="d-flex justify-center"> -->
-              <v-checkbox v-model="item.tags" value="glutenfree"></v-checkbox>
+              <v-checkbox v-model="item.tags" :value="header.val"></v-checkbox>
             </template>
-            <template #item.lowfat="{ item }">
-              <v-checkbox v-model="item.tags" value="lowfat"></v-checkbox>
-            </template>
-            <template #item.saltfree="{ item }">
-              <v-checkbox v-model="item.tags" value="saltfree"></v-checkbox>
-            </template>
-            <template #item.tags="{ item }">
-              {{ JSON.stringify(item.tags, null, null, 2) }}
-            </template>
-            <!--
-            <template v-slot:item.tags="{ item }">
-              <v-row>
-                <v-col>
-                  <v-checkbox dense v-model="item.tags" label="Gluten-Free" value="glutenfree"></v-checkbox>
-                </v-col>
-                <v-col>
-                  <v-checkbox dense v-model="item.tags" label="Low-Fat" value="low-fat"></v-checkbox>
-                </v-col>
-                <v-col>
-                  <v-checkbox dense v-model="item.tags" label="Salt-Free" value="salt-free"></v-checkbox>
-                </v-col>
-                <v-col>
-                  {{ JSON.stringify(item.tags, null, null, 2) }}
-                </v-col>
-              </v-row>
-            </template>
-            -->
           </v-data-table>
         </v-container>
       </v-main>
     </v-app>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.x/lodash.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
   <script src="js/storage.js"></script>
@@ -67,7 +44,7 @@
         const data = storage.fetch();
         return {
           headers: data.headers,
-          desserts: data.items
+          items: data.items
         }
       }
     })
