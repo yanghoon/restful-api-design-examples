@@ -20,19 +20,17 @@
   }
   function put (uri, body) {
     console.log('PUT ' + uri, body)
-    save( _.merge(fetch(), { uri: body }) )
+    save( _.assign(fetch(), { [uri]: body }) )
   }
 
   // Raw Data
   const data = {
     // 'api/config/permissions/menus': [
     'api/permissions/menus': [
-      // { id: '', name: 'Applications', permissions: ['view', 'edit', 'delete', 'admin'] },
-      // { id: '', name: 'Databases', permissions: ['view', 'edit', 'delete', 'admin'] },
-      // { id: '', name: 'Storages', permissions: ['view', 'edit', 'delete', 'admin'] },
       { id: '0', name: 'Applications', verbs: ['view', 'edit', 'delete', 'admin'] },
       { id: '1', name: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
       { id: '2', name: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { id: '3', name: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
     ],
     'api/permissions/kubernetes': [
       { id: '0', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
@@ -41,17 +39,14 @@
     ],
     'api/tenants': [
       { id: '0', name: 'Google' },
+      { id: '1', name: 'Facebook' },
     ],
     'api/tenants/0/roles': [
       { id: '0', name: 'Admin' },
       { id: '1', name: 'Member' }
     ],
-    'api/tenants/0/roles/0/permissions/menus': [
-      // { id: '', name: 'Applications', tags: ['view', 'edit', 'delete', 'admin'] },
-    ],
-    'api/tenants/0/roles/1/permissions/menus': [
-      // { id: '', name: 'Applications', tags: ['view', 'edit', 'delete', 'admin'] },
-    ],
+    // 'api/tenants/0/roles/0/permissions/menus': [],
+    // 'api/tenants/0/roles/1/permissions/menus': [],
     // kubernetes: {
     //   headers: [
     //     { text: 'API Group', value: 'apiGroup' },
@@ -66,7 +61,8 @@
   }
 
   // Initialized Data
-  save(data)
+  // _.isEmpty(fetch()) && save(data)
+  save( _.merge(data, fetch()) )
 
   exports.apis = {
       get: get,
