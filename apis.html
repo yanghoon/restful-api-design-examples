@@ -27,17 +27,43 @@
             <!-- -->
             <template #top="{ items, options, pagination }">
               <div class="pa-2 ma-2">
-                <v-select v-model="tenant" :items="tenants" item-text="name" item-value="id" label="Tenant"></v-select>
-                <v-select v-model="role" :items="roles" item-text="name" item-value="id" label="Role"></v-select>
-                <v-btn @click="putRolePermissions">Save</v-btn>
-                <v-checkbox v-model="showChecked" label="Show Checked Values"></v-checkbox>
+                <v-row :align="'center'">
+                  <v-col md="4" class="pb-0">
+                    <v-select v-model="form.tenant" :items="tenants" item-text="name" item-value="id" label="Tenant"></v-select>
+                  </v-col>
+                  <v-col md="4" class="pb-0">
+                    <v-select v-model="form.role" :items="roles" item-text="name" item-value="id" label="Role"></v-select>
+                  </v-col>
+                </v-row>
+
+                <v-row :align="'center'">
+                  <v-col md="4" class="pt-0">
+                    <v-checkbox v-model="form.showChecked" dense label="Show Checked Values"></v-checkbox>
+                  </v-col>
+                  <v-col md="4" class="pt-0">
+                    <v-btn small color="primary" @click="putRolePermissions">Save</v-btn>
+                  </v-col>
+                  <v-spacer></v-spacer>
+                </v-row>
+
+                <v-row v-if="category.name === 'kubernetes'" :align="'center'" class="mt-10">
+                  <v-col md="3" class="py-0">
+                    <v-select v-model="form.apiGroup" :items="kubeApis.apiGroups" item-text="apiGroup" dense label="API Group"></v-select>
+                  </v-col>
+                  <v-col md="3" class="py-0">
+                    <v-select v-model="form.resource" :items="kubeApis.resources" item-text="resource" dense label="Resource"></v-select>
+                  </v-col>
+                  <v-col md="3" class="py-0">
+                    <v-btn small color="blue lighten-1 white--text" @click="appendKubernetesResource">Add</v-btn>
+                  </v-col>
+                </v-row>
               </div>
             </template>
             <!-- -->
             <template #item.checkbox="{ item, header }">
               <v-checkbox v-model="item.verbs" :value="header.val"></v-checkbox>
             </template>
-            <template #item.verbs="scope" v-if="showChecked">
+            <template #item.verbs="scope">
               {{ JSON.stringify(scope.item.verbs, null, null, 2) }}
             </template>
           </v-data-table>
@@ -57,15 +83,17 @@
       vuetify: new Vuetify(),
       data: function () {
         return {
-          // table: { headers, items },
-          tenant: null,
-          // tenants: [],
-          role: null,
-          tab: 0,
-          showChecked: false,
+          tab: 1,
+          form: {
+            tenant: null,
+            role: null,
+            apiGroup: null,
+            resource: null,
+            showChecked: false,
+          },
           categories: [
             { name: 'menus', self: 'api/permissions/menus', useSchema: true },
-            { name: 'kubernetes', self: 'api/permissions/kubernetes' }
+            { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false }
           ],
         }
       },
@@ -85,12 +113,12 @@
           // TODO: Order = [gluten-free, low-fat, salt-free, others]
           const headers = _(schema[0]).keys().without(KEY).map(this.toHeader).value()
           const checkboxes = _(schema).map(KEY).flatten().uniq().value()
-          const checked = this.showChecked ? this.toHeader(KEY) : {}
+          const checked = this.form.showChecked ? this.toHeader(KEY) : {}
 
           return _.concat(headers, _.map(checkboxes, this.toCheckboxHeader), checked)
         },
         items: function() {
-          const vars = { tenant: this.tenant, role: this.role, category: this.category }
+          const vars = { tenant: this.form.tenant, role: this.form.role, category: this.category }
           const uri = this.template('api/tenants/${tenant}/roles/${role}/permissions/${category.name}', vars)
           const items = apis.get(uri).data
 
@@ -101,30 +129,39 @@
             return _.merge(empty, items)
           }
 
-          return items
+          return items || [{ id: '0', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: [] }]
         },
         tenants: function() {
           return apis.get('api/tenants').data
         },
         roles: function() {
           const uriTemplate = 'api/tenants/${tenant}/roles'
-          const vars = { tenant: this.tenant }
+          const vars = { tenant: this.form.tenant }
           const uri = this.template(uriTemplate, vars)
           return apis.get(uri).data
+        },
+        kubeApis: function() {
+          if (this.category.name !== 'kubernetes')
+            return {}
+
+          global.schema = this.schema
+          const apiGroups =_(global.schema).groupBy('apiGroup').values().map(_.head).value()
+          const resources = _(this.schema).filter({ apiGroup: this.form.apiGroup }).value()
+          return { apiGroups: apiGroups, resources: resources }
         }
       },
-      created: function () {
-        // this.tenants = apis.get('api/tenants').data
+      mounted: function () {
+        global.vm = this
       },
       methods: {
-        // getRoles: function () {
-        //   const uriTemplate = 'api/tenants/${tenant}/roles'
-        //   const vars = { tenant: this.tenant }
-        //   const uri = this.template(uriTemplate, vars)
-        //   this.roles = apis.get(uri).data
-        // },
+        appendKubernetesResource: function () {
+          let selected = _.find(this.schema, { apiGroup: this.form.apiGroup, resource: this.form.resource })
+          selected = Object.assign({}, selected, {verbs: []})
+          alert(JSON.stringify(selected, null, null, 2))
+          this.items.push(selected)
+        },
         putRolePermissions: function () {
-          const vars = { tenant: this.tenant, role: this.role, category: this.category }
+          const vars = { tenant: this.form.tenant, role: this.form.role, category: this.category }
           const uri = this.template('api/tenants/${tenant}/roles/${role}/permissions/${category.name}', vars)
           const body = this.items
           apis.put(uri, body)
