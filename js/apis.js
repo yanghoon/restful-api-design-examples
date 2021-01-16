@@ -26,6 +26,10 @@
   // Raw Data
   const data = {
     // 'api/config/permissions/menus': [
+    'api/permissions': [
+      { name: 'menus', self: 'api/permissions/menus', useSchema: true },
+      { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false }
+    ] ,
     'api/permissions/menus': [
       { id: '0', name: 'Applications', verbs: ['view', 'edit', 'delete', 'admin'] },
       { id: '1', name: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
@@ -36,6 +40,7 @@
       { id: '0', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
       { id: '1', apiGroup: 'apps', resource: 'deployments', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
       { id: '2', apiGroup: 'apps', resource: 'daemonsets', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { id: '3', apiGroup: 'core', resource: 'nodes', namespaced: false, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
     ],
     'api/tenants': [
       { id: '0', name: 'Google' },

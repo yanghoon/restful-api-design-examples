@@ -15,6 +15,7 @@
           <!--  -->
           <v-tabs v-model="tab" class="mb-6">
             <v-tab v-for="category in categories" :key="category.self">{{ category.name }}</v-tab>
+            <v-tab>Validator</v-tab>
           </v-tabs>
 
           <v-data-table
@@ -46,6 +47,7 @@
                   <v-spacer></v-spacer>
                 </v-row>
 
+                <!-- for Kubernetes -->
                 <v-row v-if="category.name === 'kubernetes'" :align="'center'" class="mt-10">
                   <v-col md="3" class="py-0">
                     <v-select v-model="form.apiGroup" :items="kubeApis.apiGroups" item-text="apiGroup" dense label="API Group"></v-select>
@@ -54,7 +56,8 @@
                     <v-select v-model="form.resource" :items="kubeApis.resources" item-text="resource" dense label="Resource"></v-select>
                   </v-col>
                   <v-col md="3" class="py-0">
-                    <v-btn small color="blue lighten-1 white--text" @click="appendKubernetesResource">Add</v-btn>
+                    <v-btn small color="blue lighten-1 white--text" @click="addKubernetesPermissions">Add</v-btn>
+                    <v-btn small color="blue lighten-1 white--text" @click="dump">Dump</v-btn>
                   </v-col>
                 </v-row>
               </div>
@@ -64,15 +67,35 @@
               <v-checkbox v-model="item.verbs" :value="header.val"></v-checkbox>
             </template>
             <template #item.verbs="scope">
-              {{ JSON.stringify(scope.item.verbs, null, null, 2) }}
+              {{ JSON.stringify(scope.item.verbs, null, 2) }}
             </template>
           </v-data-table>
+
+          <v-dialog v-model="dialog.show" width="45%" scrollable>
+            <v-card>
+              <v-card-title class="headline grey lighten-2">
+                {{ dialog.title }}
+              </v-card-title>
+
+              <v-card-text class="py-4 white--text" style="background-color: #283646; max-height: 450px;">
+                <pre>{{ dialog.text }}</pre>
+              </v-card-text>
+
+              <v-divider></v-divider>
+
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn color="primary" text @click="dialog.show = false">Close</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
         </v-container>
       </v-main>
     </v-app>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/lodash@4.x/lodash.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.x/dist/js-yaml.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
   <script src="js/apis.js"></script>
@@ -91,10 +114,13 @@
             resource: null,
             showChecked: false,
           },
-          categories: [
-            { name: 'menus', self: 'api/permissions/menus', useSchema: true },
-            { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false }
-          ],
+          categories: [],
+          addedItems: [],
+          dialog: {
+            show: false,
+            title: 'YAML',
+            text: ''
+          }
         }
       },
       computed: {
@@ -120,7 +146,7 @@
         items: function() {
           const vars = { tenant: this.form.tenant, role: this.form.role, category: this.category }
           const uri = this.template('api/tenants/${tenant}/roles/${role}/permissions/${category.name}', vars)
-          const items = apis.get(uri).data
+          const items = apis.get(uri).data || []
 
           if (this.category.useSchema) {
             // const remover = _.partialRight(_.assignInWith, { verbs: [] }, _)
@@ -129,7 +155,7 @@
             return _.merge(empty, items)
           }
 
-          return items || [{ id: '0', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: [] }]
+          return _.unionBy(items, this.addedItems, 'id')
         },
         tenants: function() {
           return apis.get('api/tenants').data
@@ -145,20 +171,19 @@
             return {}
 
           global.schema = this.schema
-          const apiGroups =_(global.schema).groupBy('apiGroup').values().map(_.head).value()
+          const apiGroups = _(this.schema).groupBy('apiGroup').values().map(_.head).value()
           const resources = _(this.schema).filter({ apiGroup: this.form.apiGroup }).value()
           return { apiGroups: apiGroups, resources: resources }
         }
       },
-      mounted: function () {
-        global.vm = this
+      created: function () {
+        this.categories = apis.get('api/permissions').data
       },
       methods: {
-        appendKubernetesResource: function () {
+        addKubernetesPermissions: function () {
           let selected = _.find(this.schema, { apiGroup: this.form.apiGroup, resource: this.form.resource })
           selected = Object.assign({}, selected, {verbs: []})
-          alert(JSON.stringify(selected, null, null, 2))
-          this.items.push(selected)
+          this.addedItems.push(selected)
         },
         putRolePermissions: function () {
           const vars = { tenant: this.form.tenant, role: this.form.role, category: this.category }
@@ -166,6 +191,7 @@
           const body = this.items
           apis.put(uri, body)
         },
+        //
         template: function (template, options) {
           return _.template(template)(options)
         },
@@ -174,6 +200,46 @@
         },
         toCheckboxHeader: function (val) {
           return { text: _.startCase(val), value: 'checkbox', val: val }
+        },
+        //
+        dump: function () {
+          const permissions = this.items
+          const resources = _.groupBy(permissions, v => v.namespaced === true)
+          const namespaced = resources['true']
+          const clusterwide = resources['false']
+
+          const name = this.template('realm:${tenant}:${role}', this.form)
+          const docs = [
+            this.toClusterRole(name, namespaced),
+            this.toClusterRole(name + '-cr', clusterwide),
+          ]
+
+          const opts = { noArrayIndent: true, condenseFlow: true }
+          this.dialog.text = _(docs).filter().map(d => jsyaml.dump(d, opts)).join('---\n')
+          this.dialog.show = true
+        },
+        toClusterRole: function (name, rules) {
+          // apiVersion: rbac.authorization.k8s.io/v1
+          // kind: ClusterRole
+          // metadata:
+          //   name: aggregate-cron-tabs-edit
+          //   labels:
+          //     # Add these permissions to the "admin" and "edit" default roles.
+          //     rbac.authorization.k8s.io/aggregate-to-admin: "true"
+          //     rbac.authorization.k8s.io/aggregate-to-edit: "true"
+          // rules:
+          // - apiGroups: ["stable.example.com"]
+          //   resources: ["crontabs"]
+          //   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+          return {
+            apiVersion: 'rbac.authorization.k8s.io/v1',
+            kind: 'ClusterRole',
+            metadata: { name: name },
+            rules: _.map(rules, r => {
+              return { apiGroups: [r.apiGroup], resources: [r.resource], verbs: r.verbs }
+            })
+          }
         }
       }
     })
