@@ -10,14 +10,32 @@
 <body>
   <div id="app">
     <v-app>
-      <v-main>
+      <v-main class="grey lighten-4">
         <v-container>
-          <!--  -->
-          <v-tabs v-model="tab" class="mb-6">
+          <!-- Tabs -->
+          <v-tabs v-model="tab" class="mb-6" background-color="grey lighten-4">
             <v-tab v-for="category in categories" :key="category.self">{{ category.name }}</v-tab>
             <v-tab>Validator</v-tab>
           </v-tabs>
 
+          <!-- Controls (Role)-->
+          <v-card class="px-2 mb-6">
+            <v-card-title>
+              Role
+            </v-card-title>
+            <v-card-text class="mt-n6">
+              <v-row :align="'center'">
+                <v-col md="4" class="py-0">
+                  <v-select v-model="form.tenant" :items="tenants" item-text="name" item-value="id" label="Tenant"></v-select>
+                </v-col>
+                <v-col md="4" class="py-0">
+                  <v-select v-model="form.role" :items="roles" item-text="name" item-value="id" label="Role"></v-select>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
+          <!-- Tables -->
           <v-data-table
             :headers="headers"
             :items="items"
@@ -25,44 +43,37 @@
             dense
             class="elevation-1"
           >
-            <!-- -->
             <template #top="{ items, options, pagination }">
-              <div class="pa-2 ma-2">
-                <v-row :align="'center'">
-                  <v-col md="4" class="pb-0">
-                    <v-select v-model="form.tenant" :items="tenants" item-text="name" item-value="id" label="Tenant"></v-select>
-                  </v-col>
-                  <v-col md="4" class="pb-0">
-                    <v-select v-model="form.role" :items="roles" item-text="name" item-value="id" label="Role"></v-select>
-                  </v-col>
-                </v-row>
-
-                <v-row :align="'center'">
-                  <v-col md="4" class="pt-0">
-                    <v-checkbox v-model="form.showChecked" dense label="Show Checked Values"></v-checkbox>
-                  </v-col>
-                  <v-col md="4" class="pt-0">
+              <div class="pa-6">
+                <!-- Controls (General) -->
+                <h4>Permissions</h4>
+                <div class="d-flex align-center mt-2 mb-8">
+                  <div class="mr-6">
+                    <v-checkbox v-model="form.showChecked" label="Show Checked Values" dense hide-details class="mt-0"></v-checkbox>
+                  </div>
+                  <div>
                     <v-btn small color="primary" @click="putRolePermissions">Save</v-btn>
-                  </v-col>
-                  <v-spacer></v-spacer>
-                </v-row>
+                  </div>
+                </div>
 
-                <!-- for Kubernetes -->
-                <v-row v-if="category.name === 'kubernetes'" :align="'center'" class="mt-10">
-                  <v-col md="3" class="py-0">
+                <!-- Controls (Kubernetes) -->
+                <h5 v-if="category.name === 'kubernetes'">Kubernetes APIs</h5>
+                <div v-if="category.name === 'kubernetes'" class="d-flex align-baseline mt-3">
+                  <div class="pa-0 mr-6">
                     <v-select v-model="form.apiGroup" :items="kubeApis.apiGroups" item-text="apiGroup" dense label="API Group"></v-select>
-                  </v-col>
-                  <v-col md="3" class="py-0">
+                  </div>
+                  <div class="pa-0 mr-6">
                     <v-select v-model="form.resource" :items="kubeApis.resources" item-text="resource" dense label="Resource"></v-select>
-                  </v-col>
-                  <v-col md="3" class="py-0">
-                    <v-btn small color="blue lighten-1 white--text" @click="addKubernetesPermissions">Add</v-btn>
-                    <v-btn small color="blue lighten-1 white--text" @click="dump">Dump</v-btn>
-                  </v-col>
-                </v-row>
+                  </div>
+                  <div class="pa-0">
+                    <v-btn small color="info" @click="addKubernetesPermissions">Add</v-btn>
+                    <v-btn small color="info" @click="dump">Dump</v-btn>
+                  </div>
+                </div>
               </div>
             </template>
-            <!-- -->
+
+            <!-- Columns (Checkbox) -->
             <template #item.checkbox="{ item, header }">
               <v-checkbox v-model="item.verbs" :value="header.val"></v-checkbox>
             </template>
@@ -71,6 +82,7 @@
             </template>
           </v-data-table>
 
+          <!-- Dialog (Dump YAML)-->
           <v-dialog v-model="dialog.show" width="45%" scrollable>
             <v-card>
               <v-card-title class="headline grey lighten-2">
