@@ -5,6 +5,9 @@
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <!-- <link href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.5.0/build/styles/atelier-dune-dark.min.css" rel="stylesheet"> -->
+  <!-- <link href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.5.0/build/styles/monokai.min.css" rel="stylesheet"> -->
+  <link href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.5.0/build/styles/monokai-sublime.min.css" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
 </head>
 <body>
@@ -75,7 +78,7 @@
                   <h5 v-if="category.name === 'menus'">Simulations</h5>
                   <div v-if="category.name === 'menus'" class="d-flex align-baseline mt-3">
                     <div class="pa-0">
-                      <v-btn small color="info" @click="dialog.access.show = true">Test ACL</v-btn>
+                      <v-btn small color="info" @click="dialog.acl.show = true">Test ACL</v-btn>
                     </div>
                   </div>
                 </div>
@@ -98,8 +101,8 @@
                 {{ dialog.code.title }}
               </v-card-title>
 
-              <v-card-text class="py-4 white--text" style="background-color: #283646; max-height: 450px;">
-                <pre>{{ dialog.code.text }}</pre>
+              <v-card-text class="pa-0" style="max-height: 450px;">
+                <pre v-highlightjs="dialog.code.text" class="pa-4 yaml"></pre>
               </v-card-text>
 
               <v-divider></v-divider>
@@ -112,10 +115,10 @@
           </v-dialog>
 
           <!-- Dialog (API Access Control)-->
-          <v-dialog v-model="dialog.access.show" fullscreen scrollable>
+          <v-dialog v-model="dialog.acl.show" fullscreen scrollable>
             <v-card>
               <v-card-title class="headline grey lighten-2">
-                {{ dialog.access.title }}
+                {{ dialog.acl.title }}
               </v-card-title>
 
               <!-- Controls (URI) -->
@@ -141,20 +144,20 @@
                   <div class="pa-0">
                     <v-btn small color="info" @click="testAclForm()" class="mr-1">Test</v-btn>
                     <v-btn small color="blue-grey lighten-2 white--text" @click="testAclDefaults()" class="mr-4">Test (default URIs)</v-btn>
-                    <v-btn small color="blue-grey lighten-2 white--text" @click="acl.logs = []">Clear</v-btn>
+                    <v-btn small color="blue-grey lighten-2 white--text" @click="acl.logs = []; dialog.acl.text = ''">Clear</v-btn>
                   </div>
                 </div>
               </v-card-subtitle>
 
-              <v-card-text class="py-4 white--text" style="background-color: #283646;">
-                <pre><template v-for="log in acl.logs">{{ template('${result} --- [${tenant} - ${role}] ${method} ${uri}\n', log) }}</template></pre>
+              <v-card-text class="pa-0">
+                <pre v-highlightjs="dialog.acl.text" class="pa-4 abnf" style="min-height: 100%;"></pre>
               </v-card-text>
 
               <v-divider></v-divider>
 
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="primary" text @click="dialog.access.show = false">Close</v-btn>
+                <v-btn color="primary" text @click="dialog.acl.show = false">Close</v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
@@ -167,9 +170,26 @@
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.x/dist/js-yaml.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.5.0/build/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.5.0/build/languages/yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@10.5.0/build/languages/abnf.min.js"></script>
   <script src="js/apis.js"></script>
   <script>
     const global = {}
+
+    // https://github.com/metachris/vue-highlightjs
+    Vue.directive('highlightjs', {
+      deep: true,
+      bind: function bind(el, binding) {
+        el.textContent = binding.value;
+        hljs.highlightBlock(el);
+      },
+      componentUpdated: function componentUpdated(el, binding) {
+        el.textContent = binding.value;
+        hljs.highlightBlock(el);
+      },
+    });
+
     new Vue({
       el: '#app',
       vuetify: new Vuetify(),
@@ -188,13 +208,14 @@
           addedItems: [],
           acl: {
             testCases: [
+              { tenant: 'Google', role: 'Admin', method: 'GET', uri: 'api/v1/resources/id' },
               { tenant: 'Google', role: 'Admin', method: 'GET', uri: 'api/v1/resources/id' }
             ],
             logs: []
           },
           dialog: {
             code: { show: false, title: 'YAML', text: '' },
-            access: { show: true, title: 'Simulations - Access Control', text: '' }
+            acl: { show: true, title: 'Simulations - Access Control', text: '' }
           }
         }
       },
@@ -334,9 +355,11 @@
         },
         testAcl: function (cases) {
           const arr = this.acl.logs
-          const test = c => Object.assign({}, c, { result: 'DENY' })
+          const test = c => Object.assign({}, c, { result: cases.length % 2 === 1 ? 'DENY' : 'ALLOW' })
           const args = [arr.length, 0].concat(_.map(cases, test))
           arr.splice.apply(arr, args)
+
+          this.dialog.acl.text = _.map(arr, log => this.template('${result} = ${method} "${uri}"  ; ${tenant}-${role}', log)).join('\n')
         }
       }
     })
