@@ -36,12 +36,12 @@
       { name: 'apis', self: 'api/permissions/apis', useSchema: true, fieldName: 'methods', fieldType: 'checkbox' }
     ],
     'api/permissions/apis': [
-      { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/apps/*/pipelines/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/databases/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/storages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/messages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: '', verb: '', name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: '', verb: '', name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: '', verb: '', name: 'api/v1/apps/*/pipelines/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: '', verb: '', name: 'api/v1/databases/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: '', verb: '', name: 'api/v1/storages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: '', verb: '', name: 'api/v1/messages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
     ],
     'api/permissions/tools': [
       { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'] },
@@ -62,52 +62,52 @@
       { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
     ],
     'api/menus/apps/permissions/apis': [
-      { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
-      { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-      { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
-      { group: 'apps', name: 'edit', uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
-      { group: 'apps', name: 'edit', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
-      { group: 'apps', name: 'edit', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
-      { group: 'apps', name: 'delete', uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
-      { group: 'apps', name: 'delete', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-      { group: 'apps', name: 'delete', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
-      { group: 'apps', name: 'admin', uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { group: 'apps', name: 'admin', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { group: 'apps', name: 'admin', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] },
+      { group: 'apps', verb: 'view', name: 'api/v1/apps/*', methods: ['GET'] },
+      { group: 'apps', verb: 'view', name: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      { group: 'apps', verb: 'view', name: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+      { group: 'apps', verb: 'edit', name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
+      { group: 'apps', verb: 'edit', name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
+      { group: 'apps', verb: 'edit', name: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+      { group: 'apps', verb: 'delete', name: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
+      { group: 'apps', verb: 'delete', name: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      { group: 'apps', verb: 'delete', name: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+      { group: 'apps', verb: 'admin', name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: 'apps', verb: 'admin', name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: 'apps', verb: 'admin', name: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] },
       // {
       //   group: 'apps',
       //   name: 'view',
       //   apis: [
-      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
-      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+      //     { name: 'api/v1/apps/*', methods: ['GET'] },
+      //     { name: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      //     { name: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
       //   ]
       // },
       // {
       //   group: 'apps',
       //   name: 'edit',
       //   methods: [
-      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
-      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
-      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+      //     { name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
+      //     { name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
+      //     { name: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
       //   ]
       // },
       // {
       //   group: 'apps',
       //   name: 'delete',
       //   methods: [
-      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
-      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+      //     { name: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
+      //     { name: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      //     { name: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
       //   ]
       // },
       // {
       //   group: 'apps',
       //   name: 'admin',
       //   methods: [
-      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] }
+      //     { name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      //     { name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      //     { name: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] }
       //   ]
       // }
     ],
