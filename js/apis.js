@@ -62,42 +62,54 @@
       { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
     ],
     'api/permissions/menus/apps/apis': [
-      {
-        group: 'apps',
-        name: 'view',
-        apis: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
-        ]
-      },
-      {
-        group: 'apps',
-        name: 'edit',
-        methods: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
-        ]
-      },
-      {
-        group: 'apps',
-        name: 'delete',
-        methods: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
-        ]
-      },
-      {
-        group: 'apps',
-        name: 'admin',
-        methods: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] }
-        ]
-      }
+      { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
+      { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+      { group: 'apps', name: 'edit', uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
+      { group: 'apps', name: 'edit', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
+      { group: 'apps', name: 'edit', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+      { group: 'apps', name: 'delete', uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
+      { group: 'apps', name: 'delete', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      { group: 'apps', name: 'delete', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+      { group: 'apps', name: 'admin', uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: 'apps', name: 'admin', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { group: 'apps', name: 'admin', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] },
+      // {
+      //   group: 'apps',
+      //   name: 'view',
+      //   apis: [
+      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
+      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+      //   ]
+      // },
+      // {
+      //   group: 'apps',
+      //   name: 'edit',
+      //   methods: [
+      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
+      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
+      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+      //   ]
+      // },
+      // {
+      //   group: 'apps',
+      //   name: 'delete',
+      //   methods: [
+      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
+      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
+      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+      //   ]
+      // },
+      // {
+      //   group: 'apps',
+      //   name: 'admin',
+      //   methods: [
+      //     { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      //     { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      //     { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] }
+      //   ]
+      // }
     ],
     'api/tenants': [
       { name: 'google', displayName: 'Google' },
@@ -107,6 +119,12 @@
       { name: 'admin',  displayName: 'Admin' },
       { name: 'member', displayName: 'Member' }
     ],
+    'api/tenants/google/roles/admin/permissions/tools': [
+      { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'], role: 'Master' },
+      { name: 'gitea', displayName: 'Gitea', roles: ['Viewer', 'Editor', 'Admin'], role: 'Admin' },
+      { name: 'grafana', displayName: 'Harbor', roles: ['Viewer', 'Editor', 'Admin'], role: 'Viewer' },
+      { name: 'kibana', displayName: 'Kibana', roles: ['Viewer', 'Editor', 'Admin'], role: 'Viewer' }
+    ],
     'api/tenants/google/roles/admin/permissions/kubernetes': [
       { name: 'apps/pods', apiGroup: 'apps', resource: 'pods', namespaced: true, 'verbs': ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
       { name: 'apps/deployments', apiGroup: 'apps', resource: 'deployments', namespaced: true, 'verbs': ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
@@ -114,33 +132,27 @@
       { name: 'core/nodes', apiGroup: 'core', resource: 'nodes', namespaced: false, 'verbs': ['list', 'get'] }
     ],
     'api/tenants/google/roles/admin/permissions/menus': [
-      { name: 'apps', displayName: 'Applications', verbs: [ 'admin' ] },
-      { name: 'databases', displayName: 'Databases', verbs: [ 'admin' ] },
-      { name: 'storages', displayName: 'Storages', verbs: [ 'admin' ] },
-      { name: 'messages', displayName: 'MessageQueues', verbs: [ 'admin' ] }
+      { name: 'apps', displayName: 'Applications', verbs: ['admin'] },
+      { name: 'databases', displayName: 'Databases', verbs: ['admin'] },
+      { name: 'storages', displayName: 'Storages', verbs: ['admin'] },
+      { name: 'messages', displayName: 'MessageQueues', verbs: ['admin'] }
     ],
-    'api/tenants/google/roles/admin/permissions/tools': [
-      { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'], role: 'Master' },
-      { name: 'gitea', displayName: 'Gitea', roles: ['Viewer', 'Editor', 'Admin'], role: 'Admin' },
+    'api/tenants/google/roles/member/permissions/tools': [
+      { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'], role: 'Developer' },
+      { name: 'gitea', displayName: 'Gitea', roles: ['Viewer', 'Editor', 'Admin'], role: 'Editor' },
       { name: 'grafana', displayName: 'Harbor', roles: ['Viewer', 'Editor', 'Admin'], role: 'Viewer' },
       { name: 'kibana', displayName: 'Kibana', roles: ['Viewer', 'Editor', 'Admin'], role: 'Viewer' }
     ],
     'api/tenants/google/roles/member/permissions/kubernetes': [
-      { name: 'apps/pods', 'apiGroup': 'apps', 'resource': 'pods', 'namespaced': true, 'verbs': [ 'list', 'get', 'watch' ] },
-      { name: 'apps/deployments', 'apiGroup': 'apps', 'resource': 'deployments', 'namespaced': true, 'verbs': [ 'list', 'get', 'watch' ] },
-      { name: 'core/nodes', 'apiGroup': 'core', 'resource': 'nodes', 'namespaced': false, 'verbs': [ 'list', 'get', 'watch' ] }
+      { name: 'apps/pods', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'watch'] },
+      { name: 'apps/deployments', apiGroup: 'apps', resource: 'deployments', namespaced: true, verbs: ['list', 'get', 'watch'] },
+      { name: 'core/nodes', apiGroup: 'core', resource: 'nodes', namespaced: false, verbs: ['list', 'get', 'watch'] }
     ],
     'api/tenants/google/roles/member/permissions/menus': [
-      { name: 'apps', displayName: 'Applications', 'verbs': [ 'view', 'edit', 'delete' ] },
-      { name: 'databases', displayName: 'Databases', 'verbs': [ 'view', 'edit' ] },
-      { name: 'storages', displayName: 'Storages', 'verbs': [ 'view', 'edit' ] },
-      { name: 'messages', displayName: 'MessageQueues', 'verbs': [ 'view', 'edit' ] }
-    ],
-    'api/tenants/google/roles/member/permissions/tools': [
-      { name: 'harbor', displayName: 'Harbor', roles: [ 'ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest' ], role: 'Developer' },
-      { name: 'gitea', displayName: 'Gitea', roles: [ 'Viewer', 'Editor', 'Admin' ], role: 'Editor' },
-      { name: 'grafana', displayName: 'Harbor', roles: [ 'Viewer', 'Editor', 'Admin' ], role: 'Viewer' },
-      { name: 'kibana', displayName: 'Kibana', roles: [ 'Viewer', 'Editor', 'Admin' ], role: 'Viewer' }
+      { name: 'apps', displayName: 'Applications', 'verbs': ['view', 'edit', 'delete'] },
+      { name: 'databases', displayName: 'Databases', 'verbs': ['view', 'edit'] },
+      { name: 'storages', displayName: 'Storages', 'verbs': ['view', 'edit'] },
+      { name: 'messages', displayName: 'MessageQueues', 'verbs': ['view', 'edit'] }
     ]
   }
 
