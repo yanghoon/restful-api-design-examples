@@ -17,23 +17,47 @@
         <v-container>
           <!-- Tabs -->
           <v-tabs v-model="tab" class="mb-6" background-color="grey lighten-4">
-            <v-tab v-for="category in categories" :key="category.name">{{ category.name }}</v-tab>
+            <template v-tab v-for="category in filterdCategories">
+              <v-tab :key="category.name">{{ category.name }}</v-tab>
+            </template>
           </v-tabs>
 
-          <!-- Controls (Role)-->
+          <!-- Controls (Resource)-->
           <v-card class="px-2 mb-6">
             <v-card-title class="text-subtitle-1 font-weight-bold">
-              Role
+              Resource
             </v-card-title>
             <v-card-text class="mt-n6">
-              <v-row :align="'center'">
-                <v-col md="4" class="py-0">
-                  <v-select v-model="form.tenant" :items="tenants" item-text="displayName" return-object label="Tenant"></v-select>
-                </v-col>
-                <v-col md="4" class="py-0">
-                  <v-select v-model="form.role" :items="roles" item-text="displayName" return-object label="Role"></v-select>
-                </v-col>
-              </v-row>
+              <div class="d-flex align-center">
+                <!-- for Resource Kind -->
+                <div class="mr-6">
+                  <v-select v-model="form.kind" :items="kinds" item-text="displayName" return-object label="Kind" @select="tab = 0"></v-select>
+                </div>
+                <!--
+                <v-btn-toggle v-model="form.kind" mandatory dense color="blue accent-3" class="white my-5 mr-10">
+                  <v-btn v-for="kind in kinds" :key="kind.name" :value="kind" color="white" class="px-5">
+                    {{ kind.name }}
+                  </v-btn>
+                </v-btn-toggle>
+                -->
+
+                <!-- for Role -->
+                <template v-if="form.kind.name === 'role'">
+                  <div class="mr-6">
+                    <v-select v-model="form.tenant" :items="tenants" item-text="displayName" return-object label="Tenant"></v-select>
+                  </div>
+                  <div class="">
+                    <v-select v-model="form.role" :items="roles" item-text="displayName" return-object label="Role"></v-select>
+                  </div>
+                </template>
+
+                <!-- for Menus -->
+                <template v-if="form.kind.name === 'menu'">
+                  <div class="">
+                    <v-select v-model="form.menu" :items="menus" item-text="displayName" return-object label="Menu"></v-select>
+                  </div>
+                </template>
+              </div>
             </v-card-text>
           </v-card>
 
@@ -199,12 +223,23 @@
       el: '#app',
       vuetify: new Vuetify(),
       data: function () {
+        const kinds = [
+          { name: 'role', displayName: 'Role', uri: 'api/tenants/${tenant}/roles/${role}/permissions/${category}', schema: ['tools', 'kubernetes', 'menus'] },
+          { name: 'menu', displayName: 'Menu', uri: 'api/menus/${menu}/permissions/${category}', schema: ['apis'] }
+        ]
         return {
-          uris: { tenants: 'api/tenants', categories: 'api/permissions' },
+          uris: {
+            tenants: 'api/tenants',
+            categories: 'api/permissions',
+            menus: 'api/permissions/menus'
+          },
+          kinds: kinds,
           tab: 0,
           form: {
+            kind: kinds[0],
             tenant: {},
             role: {},
+            menu: {},
             apiGroup: null,
             resource: null,
             showChecked: false,
@@ -225,6 +260,9 @@
         }
       },
       computed: {
+        menus: function() {
+          return apis.get(this.uris.menus).data
+        },
         tenants: function() {
           return apis.get(this.uris.tenants).data
         },
@@ -234,11 +272,15 @@
         categories: function() {
           return apis.get(this.uris.categories).data
         },
+        filterdCategories: function() {
+          const schema = this.form.kind.schema || []
+          return _.filter(this.categories, v => schema.includes(v.name)) || []
+        },
         category: function() {
-          return this.categories[this.tab]
+          return this.filterdCategories[this.tab] || {}
         },
         schema: function() {
-          return apis.get(this.uriTemplate('schema')).data
+          return apis.get(this.uriTemplate('schema')).data || []
         },
         headers: function() {
           const schema = this.schema
@@ -295,12 +337,22 @@
         global.vm = this
       },
       methods: {
+        shortcut: function(keydown) {
+          debugger
+          console.log(keydown)
+        },
         uriTemplate: function(name) {
-          const vars = { tenant: this.form.tenant.name, role: this.form.role.name, category: this.category.name }
+          const vars = {
+            tenant: this.form.tenant.name,
+            role: this.form.role.name,
+            menu: this.form.menu.name,
+            category: this.category.name
+          }
           return {
             roles: this.template('api/tenants/${tenant}/roles', vars),
             schema: this.template('api/permissions/${category}', vars),
-            permissions: this.template('api/tenants/${tenant}/roles/${role}/permissions/${category}', vars),
+            // permissions: this.template('api/tenants/${tenant}/roles/${role}/permissions/${category}', vars),
+            permissions: this.template(this.form.kind.uri, vars),
           }[name]
         },
         addKubernetesPermissions: function () {

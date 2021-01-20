@@ -61,7 +61,7 @@
       { name: 'storages', displayName: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
       { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
     ],
-    'api/permissions/menus/apps/apis': [
+    'api/menus/apps/permissions/apis': [
       { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
       { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
       { group: 'apps', name: 'view', uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
