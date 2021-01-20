@@ -33,15 +33,15 @@
       { name: 'tools', self: 'api/permissions/tools', useSchema: true, fieldName: 'roles', fieldType: 'select' },
       { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false, fieldName: 'verbs', fieldType: 'checkbox' },
       { name: 'menus', self: 'api/permissions/menus', useSchema: true, fieldName: 'verbs', fieldType: 'checkbox' },
-      { name: 'apis', self: 'api/permissions/apis', useSchema: true, fieldName: 'verbs', fieldType: 'checkbox' }
+      { name: 'apis', self: 'api/permissions/apis', useSchema: true, fieldName: 'methods', fieldType: 'checkbox' }
     ],
     'api/permissions/apis': [
-      { uriTemplate: 'api/v1/apps/*', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/apps/*/build/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/apps/*/pipelines/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/databases/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/storages/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { uriTemplate: 'api/v1/messages/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/apps/*/pipelines/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/databases/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/storages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/messages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
     ],
     'api/permissions/tools': [
       { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'] },

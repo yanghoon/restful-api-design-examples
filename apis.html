@@ -207,7 +207,7 @@
             role: {},
             apiGroup: null,
             resource: null,
-            showChecked: true,
+            showChecked: false,
             acl: { method: null, uri: null }
           },
           addedItems: [],
@@ -375,8 +375,8 @@
         },
         testAclForm: function () {
           const req = {
-            tenant: this.tenants[this.form.tenant].name,
-            role: this.roles[this.form.role].name,
+            tenant: this.form.tenant.name,
+            role: this.form.role.name,
             method: this.form.acl.method,
             uri: this.form.acl.uri
           }
