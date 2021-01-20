@@ -25,48 +25,126 @@
 
   // Raw Data
   const data = {
-    // 'api/config/permissions/menus': [
+    /**
+     * api/permissions         := { name, props(displayName), fieldName, fieldType: (checkbox || select) }
+     * api/permissions/{sub}   := { name, props(displayName), verbs[] or roles[{}] }
+     */
     'api/permissions': [
-      { name: 'menus', self: 'api/permissions/menus', useSchema: true },
-      { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false }
-    ] ,
-    'api/permissions/menus': [
-      { id: '0', name: 'Applications', verbs: ['view', 'edit', 'delete', 'admin'] },
-      { id: '1', name: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
-      { id: '2', name: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
-      { id: '3', name: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
+      { name: 'tools', self: 'api/permissions/tools', useSchema: true, fieldName: 'roles', fieldType: 'select' },
+      { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false, fieldName: 'verbs', fieldType: 'checkbox' },
+      { name: 'menus', self: 'api/permissions/menus', useSchema: true, fieldName: 'verbs', fieldType: 'checkbox' },
+      { name: 'apis', self: 'api/permissions/apis', useSchema: true, fieldName: 'verbs', fieldType: 'checkbox' }
+    ],
+    'api/permissions/apis': [
+      { uriTemplate: 'api/v1/apps/*', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/apps/*/build/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/apps/*/pipelines/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/databases/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/storages/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { uriTemplate: 'api/v1/messages/**', verbs: ['GET', 'POST', 'PUT', 'DELETE'] },
+    ],
+    'api/permissions/tools': [
+      { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'] },
+      { name: 'gitea', displayName: 'Gitea', roles: ['Viewer', 'Editor', 'Admin'] },
+      { name: 'grafana', displayName: 'Harbor', roles: ['Viewer', 'Editor', 'Admin'] },
+      { name: 'kibana', displayName: 'Kibana', roles: ['Viewer', 'Editor', 'Admin'] },
     ],
     'api/permissions/kubernetes': [
-      { id: '0', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
-      { id: '1', apiGroup: 'apps', resource: 'deployments', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
-      { id: '2', apiGroup: 'apps', resource: 'daemonsets', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
-      { id: '3', apiGroup: 'core', resource: 'nodes', namespaced: false, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'apps/pods', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'apps/deployments', apiGroup: 'apps', resource: 'deployments', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'apps/daemonsets', apiGroup: 'apps', resource: 'daemonsets', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'core/nodes', apiGroup: 'core', resource: 'nodes', namespaced: false, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+    ],
+    'api/permissions/menus': [
+      { name: 'apps', displayName: 'Applications', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { name: 'databases', displayName: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { name: 'storages', displayName: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
+    ],
+    'api/permissions/menus/apps/apis': [
+      {
+        group: 'apps',
+        name: 'view',
+        apis: [
+          { uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
+          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
+          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+        ]
+      },
+      {
+        group: 'apps',
+        name: 'edit',
+        methods: [
+          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
+          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
+          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+        ]
+      },
+      {
+        group: 'apps',
+        name: 'delete',
+        methods: [
+          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
+          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
+          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] }
+        ]
+      },
+      {
+        group: 'apps',
+        name: 'admin',
+        methods: [
+          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] }
+        ]
+      }
     ],
     'api/tenants': [
-      { id: '0', name: 'Google' },
-      { id: '1', name: 'Facebook' },
+      { name: 'google', displayName: 'Google' },
+      { name: 'facebook', displayName: 'Facebook' },
     ],
-    'api/tenants/0/roles': [
-      { id: '0', name: 'Admin' },
-      { id: '1', name: 'Member' }
+    'api/tenants/google/roles': [
+      { name: 'admin',  displayName: 'Admin' },
+      { name: 'member', displayName: 'Member' }
     ],
-    // 'api/tenants/0/roles/0/permissions/menus': [],
-    // 'api/tenants/0/roles/1/permissions/menus': [],
-    // kubernetes: {
-    //   headers: [
-    //     { text: 'API Group', value: 'apiGroup' },
-    //     { text: 'Resource', value: 'resource' },
-    //   ],
-    //   items: [
-    //     { id: '', apiGroup: 'apps', resource: 'pods', namespaced: true, tags: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
-    //     { id: '', apiGroup: 'apps', resource: 'deployments', namespaced: true, tags: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
-    //     { id: '', apiGroup: 'apps', resource: 'daemonsets', namespaced: true, tags: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
-    //   ]
-    // },
+    'api/tenants/google/roles/admin/permissions/kubernetes': [
+      { name: 'apps/pods', apiGroup: 'apps', resource: 'pods', namespaced: true, 'verbs': ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'apps/deployments', apiGroup: 'apps', resource: 'deployments', namespaced: true, 'verbs': ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'apps/daemonsets', apiGroup: 'apps', resource: 'daemonsets', namespaced: true, 'verbs': ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
+      { name: 'core/nodes', apiGroup: 'core', resource: 'nodes', namespaced: false, 'verbs': ['list', 'get'] }
+    ],
+    'api/tenants/google/roles/admin/permissions/menus': [
+      { name: 'apps', displayName: 'Applications', verbs: [ 'admin' ] },
+      { name: 'databases', displayName: 'Databases', verbs: [ 'admin' ] },
+      { name: 'storages', displayName: 'Storages', verbs: [ 'admin' ] },
+      { name: 'messages', displayName: 'MessageQueues', verbs: [ 'admin' ] }
+    ],
+    'api/tenants/google/roles/admin/permissions/tools': [
+      { name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'], role: 'Master' },
+      { name: 'gitea', displayName: 'Gitea', roles: ['Viewer', 'Editor', 'Admin'], role: 'Admin' },
+      { name: 'grafana', displayName: 'Harbor', roles: ['Viewer', 'Editor', 'Admin'], role: 'Viewer' },
+      { name: 'kibana', displayName: 'Kibana', roles: ['Viewer', 'Editor', 'Admin'], role: 'Viewer' }
+    ],
+    'api/tenants/google/roles/member/permissions/kubernetes': [
+      { name: 'apps/pods', 'apiGroup': 'apps', 'resource': 'pods', 'namespaced': true, 'verbs': [ 'list', 'get', 'watch' ] },
+      { name: 'apps/deployments', 'apiGroup': 'apps', 'resource': 'deployments', 'namespaced': true, 'verbs': [ 'list', 'get', 'watch' ] },
+      { name: 'core/nodes', 'apiGroup': 'core', 'resource': 'nodes', 'namespaced': false, 'verbs': [ 'list', 'get', 'watch' ] }
+    ],
+    'api/tenants/google/roles/member/permissions/menus': [
+      { name: 'apps', displayName: 'Applications', 'verbs': [ 'view', 'edit', 'delete' ] },
+      { name: 'databases', displayName: 'Databases', 'verbs': [ 'view', 'edit' ] },
+      { name: 'storages', displayName: 'Storages', 'verbs': [ 'view', 'edit' ] },
+      { name: 'messages', displayName: 'MessageQueues', 'verbs': [ 'view', 'edit' ] }
+    ],
+    'api/tenants/google/roles/member/permissions/tools': [
+      { name: 'harbor', displayName: 'Harbor', roles: [ 'ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest' ], role: 'Developer' },
+      { name: 'gitea', displayName: 'Gitea', roles: [ 'Viewer', 'Editor', 'Admin' ], role: 'Editor' },
+      { name: 'grafana', displayName: 'Harbor', roles: [ 'Viewer', 'Editor', 'Admin' ], role: 'Viewer' },
+      { name: 'kibana', displayName: 'Kibana', roles: [ 'Viewer', 'Editor', 'Admin' ], role: 'Viewer' }
+    ]
   }
 
   // Initialized Data
-  // _.isEmpty(fetch()) && save(data)
   save( _.merge(data, fetch()) )
 
   exports.apis = {

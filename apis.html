@@ -17,7 +17,7 @@
         <v-container>
           <!-- Tabs -->
           <v-tabs v-model="tab" class="mb-6" background-color="grey lighten-4">
-            <v-tab v-for="category in categories" :key="category.self">{{ category.name }}</v-tab>
+            <v-tab v-for="category in categories" :key="category.name">{{ category.name }}</v-tab>
           </v-tabs>
 
           <!-- Controls (Role)-->
@@ -28,10 +28,10 @@
             <v-card-text class="mt-n6">
               <v-row :align="'center'">
                 <v-col md="4" class="py-0">
-                  <v-select v-model="form.tenant" :items="tenants" item-text="name" item-value="id" label="Tenant"></v-select>
+                  <v-select v-model="form.tenant" :items="tenants" item-text="displayName" return-object label="Tenant"></v-select>
                 </v-col>
                 <v-col md="4" class="py-0">
-                  <v-select v-model="form.role" :items="roles" item-text="name" item-value="id" label="Role"></v-select>
+                  <v-select v-model="form.role" :items="roles" item-text="displayName" return-object label="Role"></v-select>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -87,10 +87,15 @@
 
             <!-- Columns (Checkbox) -->
             <template #item.checkbox="{ item, header }">
-              <v-checkbox v-model="item.verbs" :value="header.val"></v-checkbox>
+              <v-checkbox v-model="item[header.field]" :value="header.val"></v-checkbox>
             </template>
-            <template #item.verbs="scope">
-              {{ JSON.stringify(scope.item.verbs, null, 2) }}
+            <!-- Columns (Select) -->
+            <template #item.select="{ item, header }">
+              <v-select v-model="item[header.val]" :items="item[header.field]" item-text="name" placeholder="Select Item"></v-select>
+            </template>
+            <!-- Columns (Current Values) -->
+            <template #item.value="{ item, header }">
+              {{ JSON.stringify(item[header.field], null, 2) }}
             </template>
           </v-data-table>
 
@@ -195,16 +200,16 @@
       vuetify: new Vuetify(),
       data: function () {
         return {
+          uris: { tenants: 'api/tenants', categories: 'api/permissions' },
           tab: 0,
           form: {
-            tenant: '0',
-            role: '0',
+            tenant: {},
+            role: {},
             apiGroup: null,
             resource: null,
-            showChecked: false,
+            showChecked: true,
             acl: { method: null, uri: null }
           },
-          categories: [],
           addedItems: [],
           acl: {
             testCases: [
@@ -215,52 +220,66 @@
           },
           dialog: {
             code: { show: false, title: 'YAML', text: '' },
-            acl: { show: true, title: 'Simulations - Access Control', text: '' }
+            acl: { show: false, title: 'Simulations - Access Control', text: '' }
           }
         }
       },
       computed: {
+        tenants: function() {
+          return apis.get(this.uris.tenants).data
+        },
+        roles: function() {
+          return apis.get(this.uriTemplate('roles')).data
+        },
+        categories: function() {
+          return apis.get(this.uris.categories).data
+        },
         category: function() {
-          return this.categories[this.tab];
+          return this.categories[this.tab]
         },
         schema: function() {
-          return apis.get(this.category.self).data
+          return apis.get(this.uriTemplate('schema')).data
         },
         headers: function() {
-          const KEY = 'verbs'
-          // const schema = apis.get(this.category.self).data
           const schema = this.schema
+          const KEY = this.category.fieldName
 
           // Dynamic Columns (Checkbox)
           // TODO: Order = [gluten-free, low-fat, salt-free, others]
           const headers = _(schema[0]).keys().without(KEY).map(this.toHeader).value()
-          const checkboxes = _(schema).map(KEY).flatten().uniq().value()
-          const checked = this.form.showChecked ? this.toHeader(KEY) : {}
 
-          return _.concat(headers, _.map(checkboxes, this.toCheckboxHeader), checked)
+          if (this.category.fieldType === 'checkbox') {
+            const checkboxes = _(schema).map(KEY).flatten().uniq().value()
+            const value = this.form.showChecked ? this.toHeader('value', KEY) : {}
+
+            return _.concat(headers, _.map(checkboxes, v => this.toCheckboxHeader(v, KEY)), value)
+          }
+
+          if (this.category.fieldType === 'select') {
+            const value = this.form.showChecked ? this.toHeader('value', 'role') : {}
+            return _.concat(headers, this.toSelectHeader('role', KEY), value)
+          }
+
+          return headers
         },
         items: function() {
-          const vars = { tenant: this.form.tenant, role: this.form.role, category: this.category }
-          const uri = this.template('api/tenants/${tenant}/roles/${role}/permissions/${category.name}', vars)
+          const uri = this.uriTemplate('permissions')
           const items = apis.get(uri).data || []
 
           if (this.category.useSchema) {
-            // const remover = _.partialRight(_.assignInWith, { verbs: [] }, _)
-            // global.schema = this.schema
-            const empty = _.map( this.schema, v => Object.assign({}, v, {verbs: []}) )
-            return _.merge(empty, items)
+            if (this.category.fieldType === 'checkbox') {
+              const KEY = this.category.fieldName
+              const empty = _.map( this.schema, v => Object.assign({}, v, { [KEY]: [] }) )
+              return _.merge(empty, items)
+            }
+            if (this.category.fieldType === 'select') {
+              const KEY = this.category.fieldName
+              const empty = _.cloneDeep(this.schema)
+              return _.merge(empty, items)
+            }
           }
 
-          return _.unionBy(items, this.addedItems, 'id')
-        },
-        tenants: function() {
-          return apis.get('api/tenants').data
-        },
-        roles: function() {
-          const uriTemplate = 'api/tenants/${tenant}/roles'
-          const vars = { tenant: this.form.tenant }
-          const uri = this.template(uriTemplate, vars)
-          return apis.get(uri).data
+          return _.unionBy(items, this.addedItems, 'name')
         },
         kubeApis: function() {
           if (this.category.name !== 'kubernetes')
@@ -272,42 +291,48 @@
           return { apiGroups: apiGroups, resources: resources }
         }
       },
-      created: function () {
-        this.categories = apis.get('api/permissions').data
-      },
       mounted: function () {
         global.vm = this
       },
       methods: {
+        uriTemplate: function(name) {
+          const vars = { tenant: this.form.tenant.name, role: this.form.role.name, category: this.category.name }
+          return {
+            roles: this.template('api/tenants/${tenant}/roles', vars),
+            schema: this.template('api/permissions/${category}', vars),
+            permissions: this.template('api/tenants/${tenant}/roles/${role}/permissions/${category}', vars),
+          }[name]
+        },
         addKubernetesPermissions: function () {
           let selected = _.find(this.schema, { apiGroup: this.form.apiGroup, resource: this.form.resource })
           selected = Object.assign({}, selected, {verbs: []})
           this.addedItems.push(selected)
         },
         putRolePermissions: function () {
-          const vars = { tenant: this.form.tenant, role: this.form.role, category: this.category }
-          const uri = this.template('api/tenants/${tenant}/roles/${role}/permissions/${category.name}', vars)
-          const body = this.items
-          apis.put(uri, body)
+          apis.put(this.uriTemplate('permissions'), this.items)
         },
         //
         template: function (template, options) {
           return _.template(template)(options)
         },
-        toHeader: function (val) {
-          return { text: _.startCase(val), value: val }
+        toHeader: function (val, field) {
+          return { text: _.startCase(val), value: val, field: field }
         },
-        toCheckboxHeader: function (val) {
-          return { text: _.startCase(val), value: 'checkbox', val: val }
+        toCheckboxHeader: function (val, field) {
+          return { text: _.startCase(val), value: 'checkbox', val: val, field: field }
+        },
+        toSelectHeader: function (val, field) {
+          return { text: _.startCase(val), value: 'select', val: val, field: field }
         },
         //
         dump: function () {
+          // const permissions = _.filter(this.items, v => !_.isEmpty(v.verbs))
           const permissions = this.items
           const resources = _.groupBy(permissions, v => v.namespaced === true)
           const namespaced = resources['true']
           const clusterwide = resources['false']
 
-          const name = this.template('realm:${tenant}:${role}', this.form)
+          const name = this.template('realm:${tenant}:${role}', { tenant: this.form.tenant.name, role: this.form.role.name })
           const docs = [
             this.toClusterRole(name, namespaced),
             this.toClusterRole(name + '-cr', clusterwide),
@@ -330,6 +355,10 @@
           // - apiGroups: ["stable.example.com"]
           //   resources: ["crontabs"]
           //   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+          rules = _.filter(rules, v => !_.isEmpty(v.verbs))
+          if (_.isEmpty(rules))
+            return null;
 
           return {
             apiVersion: 'rbac.authorization.k8s.io/v1',
@@ -355,11 +384,16 @@
         },
         testAcl: function (cases) {
           const arr = this.acl.logs
-          const test = c => Object.assign({}, c, { result: cases.length % 2 === 1 ? 'DENY' : 'ALLOW' })
-          const args = [arr.length, 0].concat(_.map(cases, test))
+          // const test = c => Object.assign({}, c, { result: cases.length % 2 === 1 ? 'DENY' : 'ALLOW' })
+          // const test = c => Object.assign({}, c, { result: cases.length % 2 === 1 ? 'DENY' : 'ALLOW' })
+          const args = [arr.length, 0].concat(_.map(cases, this.hasPermission))
           arr.splice.apply(arr, args)
 
           this.dialog.acl.text = _.map(arr, log => this.template('${result} = ${method} "${uri}"  ; ${tenant}-${role}', log)).join('\n')
+        },
+        hasPermission: function (req) {
+          req.result = 'DENY'
+          return req
         }
       }
     })
