@@ -224,8 +224,8 @@
       vuetify: new Vuetify(),
       data: function () {
         const kinds = [
-          { name: 'role', displayName: 'Role', uri: 'api/tenants/${tenant}/roles/${role}/permissions/${category}', schema: ['tools', 'kubernetes', 'menus'] },
-          { name: 'menu', displayName: 'Menu', uri: 'api/menus/${menu}/permissions/${category}', schema: ['apis'] }
+          { name: 'role', displayName: 'Role', uri: 'api/tenants/${tenant}/roles/${role}/permissions/${schema}', schema: ['tools', 'kubernetes', 'menus'] },
+          { name: 'menu', displayName: 'Menu', uri: 'api/menus/${menu}/permissions/${schema}', schema: ['apis'] }
         ]
         return {
           uris: {
@@ -276,48 +276,81 @@
           const schema = this.form.kind.schema || []
           return _.filter(this.categories, v => schema.includes(v.name)) || []
         },
+        schema1: function() {
+          return this.filterdCategories[this.tab] || {}
+        },
+        rules: function() {
+          return apis.get(this.uriTemplate('rules')).data || []
+        },
         category: function() {
           return this.filterdCategories[this.tab] || {}
         },
         schema: function() {
           return apis.get(this.uriTemplate('schema')).data || []
         },
+        permissions: function() {
+          // const role = this.form.role.name
+          const uri = this.uriTemplate('permissions')
+          const [permissions] = apis.get(uri).data || []
+          return permissions || {}
+        },
         headers: function() {
-          const schema = this.schema
-          const KEY = this.category.fieldName
+          const rules = this.schema1.rules || []
+          const names = _.map(rules, 'options')
 
           // Dynamic Columns (Checkbox)
           // TODO: Order = [gluten-free, low-fat, salt-free, others]
-          const headers = _(schema[0]).keys().without(KEY).map(this.toHeader).value()
+          const headers = _(this.rules[0]).keys().without(...names).map(this.toHeader).value()
+          const values = []
 
-          if (this.category.fieldType === 'checkbox') {
-            const checkboxes = _(schema).map(KEY).flatten().uniq().value()
-            const value = this.form.showChecked ? this.toHeader('value', KEY) : {}
+          for(const rule of rules) {
+            if (rule.type === 'multiple') {
+              // checkbox
+              let checkboxes = _(this.rules).map(rule.options).flatten().uniq().value()
+              checkboxes = _.map(checkboxes, v => this.toCheckboxHeader(v, rule.name))
+              headers.push(...checkboxes)
 
-            return _.concat(headers, _.map(checkboxes, v => this.toCheckboxHeader(v, KEY)), value)
+              const value = this.toHeader('value', rule.name)
+              values.push(value)
+            }
+
+            if (rule.type === 'single') {
+              // select
+              const select = this.toSelectHeader(rule.name, rule.options)
+              headers.push(select)
+
+              const value = this.toHeader('value', rule.name)
+              values.push(value)
+            }
           }
 
-          if (this.category.fieldType === 'select') {
-            const value = this.form.showChecked ? this.toHeader('value', 'role') : {}
-            return _.concat(headers, this.toSelectHeader('role', KEY), value)
+          if(this.form.showChecked) {
+            const values = _(this.schema1.rules).map('name').map(v => this.toHeader('value', v)).value()
+            headers.push(...values)
           }
 
           return headers
         },
         items: function() {
-          const uri = this.uriTemplate('permissions')
-          const items = apis.get(uri).data || []
+          // const uri = this.uriTemplate('permissions')
+          // const [permissions] = apis.get(uri).data || []
+          // let { rules: items } = permissions || {}
+          // this.permissions = permissions
+          let { rules: items } = this.permissions || {}
 
-          if (this.category.useSchema) {
-            if (this.category.fieldType === 'checkbox') {
-              const KEY = this.category.fieldName
-              const empty = _.map( this.schema, v => Object.assign({}, v, { [KEY]: [] }) )
-              return _.merge(empty, items)
-            }
-            if (this.category.fieldType === 'select') {
-              const KEY = this.category.fieldName
-              const empty = _.cloneDeep(this.schema)
-              return _.merge(empty, items)
+          if (this.schema1.type === 'fixed') {
+            for(const rule of this.schema1.rules) {
+              if (rule.type === 'multiple') {
+                // checkbox
+                const defaults = _.map(this.rules, v => Object.assign({}, v, { [rule.name]: [] }) )
+                items = _.merge(defaults, items)
+              }
+
+              if (rule.type === 'single') {
+                // select
+                const defaults = _.cloneDeep(this.rules)
+                items = _.merge(defaults, items)
+              }
             }
           }
 
@@ -346,10 +379,12 @@
             tenant: this.form.tenant.name,
             role: this.form.role.name,
             menu: this.form.menu.name,
+            schema: this.category.name,
             category: this.category.name
           }
           return {
             roles: this.template('api/tenants/${tenant}/roles', vars),
+            rules: this.template('api/permissions/${schema}', vars),
             schema: this.template('api/permissions/${category}', vars),
             // permissions: this.template('api/tenants/${tenant}/roles/${role}/permissions/${category}', vars),
             permissions: this.template(this.form.kind.uri, vars),
@@ -361,7 +396,8 @@
           this.addedItems.push(selected)
         },
         putRolePermissions: function () {
-          apis.put(this.uriTemplate('permissions'), this.items)
+          const body = { ...this.permissions, rules: this.items }
+          apis.put(this.uriTemplate('permissions'), body)
         },
         //
         template: function (template, options) {

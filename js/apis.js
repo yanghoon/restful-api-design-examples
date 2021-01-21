@@ -14,9 +14,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }
   // for Http Simulations
-  function get (uri) {
-    // console.log('GET ' + uri)
-
+  function resolve (uri) {
     const routes = {
       'api/tenants/(?<tenant>[^/]+)/roles/(?<resource>[^/]+)/permissions/(?<schema>[^/]+)': ['db/roles/permissions'],
       'api/tenants/(?<tenant>[^/]+)/roles': ['db/roles'],
@@ -24,20 +22,44 @@
       'api/permissions': ['db/permissions'],
       'api/tenants': ['db/tenants'],
     }
+
     const uriTemplate = _.find(_.keys(routes), u => new RegExp(u + '$').test(uri))
     const [table, handler] = routes[uriTemplate] || []
+    const vars = new RegExp(uriTemplate).exec(uri).groups || {}
 
+    return { uriTemplate: uriTemplate, vars: vars, table: table, handler: handler }
+  }
+  function get (uri) {
+    console.groupCollapsed('GET ' + uri)
+
+    const { uriTemplate, vars, table, handler } = resolve(uri)
     let rows = fetch()[table]
-    let vars = new RegExp(uriTemplate).exec(uri).groups || {}
     rows = _.filter(rows, vars)
 
-    console.log('GET ' + uri, vars, table, rows)
+    console.log('path-variables', vars)
+    console.log(table, rows)
+    console.groupEnd()
 
     return { status: 200, data: rows }
   }
   function put (uri, body) {
-    console.log('PUT ' + uri, body)
-    save( _.assign(fetch(), { [uri]: body }) )
+    console.groupCollapsed('PUT ' + uri)
+    console.log('body', body)
+
+    const { uriTemplate, vars, table, handler } = resolve(uri)
+    let db = fetch()
+    let rows = fetch()[table]
+    
+    // delete and insert
+    rows = _.reject(rows, vars)
+    rows.push({ id: rows.length, ...body })
+    save( _.assign(db, { [table]: rows }) )
+
+    console.log('path-variables', vars)
+    console.log(table, rows)
+    console.groupEnd()
+
+    return { status: 200 }
   }
 
   // Raw Data
@@ -86,10 +108,47 @@
      */
     /* Permissions Schema */
     'db/permissions': [
-      { name: 'tools', self: 'api/permissions/tools', useSchema: true, fieldName: 'roles', fieldType: 'select' },
-      { name: 'kubernetes', self: 'api/permissions/kubernetes', useSchema: false, fieldName: 'verbs', fieldType: 'checkbox' },
-      { name: 'menus', self: 'api/permissions/menus', useSchema: true, fieldName: 'verbs', fieldType: 'checkbox' },
-      { name: 'apis', self: 'api/permissions/apis', useSchema: true, fieldName: 'methods', fieldType: 'checkbox' }
+      {
+        name: 'tools',
+        displayName: 'Tools',
+        type: 'fixed',
+        attrs: { columns: [] },
+        self: 'api/permissions/tools',
+        rules: [
+          { name: 'role', options: 'roles', type: 'single' }
+        ]
+      },
+      {
+        name: 'kubernetes',
+        displayName: 'Kubernetes',
+        type: 'searchable',
+        attrs: { columns: [] },
+        self: 'api/permissions/kubernetes',
+        rules: [
+          { name: 'verbs', options: 'verbs', type: 'multiple' }
+        ]
+      },
+      {
+        name: 'menus',
+        displayName: 'Menus',
+        type: 'fixed',
+        attrs: { columns: [] },
+        self: 'api/permissions/menus',
+        rules: [
+          { name: 'verbs', options: 'verbs', type: 'multiple' }
+        ]
+      },
+      {
+        name: 'apis',
+        displayName: 'APIs',
+        // type: 'searchable',
+        type: 'fixed',
+        attrs: { columns: [] },
+        self: 'api/permissions/apis',
+        rules: [
+          { name: 'methods', options: 'methods', type: 'multiple' }
+        ]
+      }
     ],
     /* Permissions Rules */
     'db/permissions/rules': [
@@ -167,7 +226,7 @@
         rules: [
           { name: 'harbor', displayName: 'Harbor', role: 'Master' },
           { name: 'gitea', displayName: 'Gitea', role: 'Admin' },
-          { name: 'grafana', displayName: 'Harbor', role: 'Viewer' },
+          { name: 'grafana', displayName: 'Grafana', role: 'Viewer' },
           { name: 'kibana', displayName: 'Kibana', role: 'Viewer' }
         ]
       },
