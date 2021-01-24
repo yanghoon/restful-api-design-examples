@@ -5,6 +5,26 @@
   'use strict';
 
   const STORAGE_KEY = 'resources';
+  const match = (pattern, path) => {
+    pattern = pattern.split('/')
+    path = path.split('/')
+
+    if (pattern.length !== path.length) {
+      return false
+    }
+
+    for(const i in pattern) {
+      if (pattern[i] === '*') {
+        continue
+      }
+      
+      if (pattern[i] !== path[i]) {
+        return false
+      }
+    }
+
+    return true
+  }
 
   // for Storage
   function fetch () {
@@ -16,11 +36,13 @@
   // for Http Simulations
   function resolve (uri) {
     const routes = {
-      'api/tenants/(?<tenant>[^/]+)/roles/(?<resource>[^/]+)/permissions/(?<schema>[^/]+)': ['db/roles/permissions'],
+      // 'api/menus/(?<menu>[^/]+)/permissions/(?<schema>[^/]+)/(?<verb>[^/]+)': ['db/permissions/menus'],
+      'api/menus/(?<tenant>[^/]+)/permissions/(?<schema>[^/]+)/(?<resource>[^/]+)': ['db/permissions/menus'],
+      'api/tenants/(?<tenant>[^/]+)/roles/(?<resource>[^/]+)/permissions/(?<schema>[^/]+)': ['db/permissions/roles'],
       'api/tenants/(?<tenant>[^/]+)/roles': ['db/roles'],
-      'api/permissions/(?<schema>[^/]+)': ['db/permissions/rules'],
-      'api/permissions': ['db/permissions'],
       'api/tenants': ['db/tenants'],
+      'api/permissions/(?<schema>[^/]+)': ['db/permissions/rules'],
+      'api/permissions': ['db/permissions']
     }
 
     const uriTemplate = _.find(_.keys(routes), u => new RegExp(u + '$').test(uri))
@@ -53,6 +75,7 @@
     // delete and insert
     rows = _.reject(rows, vars)
     rows.push({ id: rows.length, ...body })
+    rows = _.sortBy(rows, 'id')
     save( _.assign(db, { [table]: rows }) )
 
     console.log('path-variables', vars)
@@ -60,6 +83,42 @@
     console.groupEnd()
 
     return { status: 200 }
+  }
+  function post (uri, body) {
+    console.groupCollapsed('POST ' + uri)
+    console.log('body', JSON.parse(JSON.stringify(body)))
+
+    if (uri === 'api/permissions/allowed') {
+      const { tenant, role, method, uri: targetUri } = body
+      const db = fetch()
+
+      const menus = _.filter(db['db/permissions/roles'], { tenant, resource: role, schema: 'menus' })
+      for(const menu of menus) {
+        for(const rule of menu.rules) {
+          for(const verb of rule.verbs) {
+            const apis = _.filter(db['db/permissions/menus'], { tenant: rule.name, resource: verb })
+
+            for(const api of _.get(apis, '[0].rules', [])) {
+              const pattern = api.name
+              const methods = api.methods
+              const tragetUri = targetUri
+              const tragetMethod = method
+              const hasMethod = api.methods.includes(method)
+              const matchedUri = match(api.name, targetUri)
+
+              console.log(`${menu.resource}.${rule.name}.${verb}`, hasMethod && matchedUri, [methods.join(), pattern], [hasMethod, matchedUri])
+              if (hasMethod && matchedUri) {
+                console.groupEnd()
+                return true
+              }
+            }
+          }
+        }
+      }
+
+      console.groupEnd()
+      return false
+    }
   }
 
   // Raw Data
@@ -152,12 +211,12 @@
     ],
     /* Permissions Rules */
     'db/permissions/rules': [
-      { schema: 'apis', name: 'api/v1/apps/*', group: '', verb: '', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { schema: 'apis', name: 'api/v1/apps/*/build/**', group: '', verb: '', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { schema: 'apis', name: 'api/v1/apps/*/pipelines/**', group: '', verb: '', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { schema: 'apis', name: 'api/v1/databases/**', group: '', verb: '', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { schema: 'apis', name: 'api/v1/storages/**', group: '', verb: '', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-      { schema: 'apis', name: 'api/v1/messages/**', group: '', verb: '', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { schema: 'apis', name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { schema: 'apis', name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { schema: 'apis', name: 'api/v1/apps/*/pipelines/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { schema: 'apis', name: 'api/v1/databases/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { schema: 'apis', name: 'api/v1/storages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+      { schema: 'apis', name: 'api/v1/messages/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
       { schema: 'tools', name: 'harbor', displayName: 'Harbor', roles: ['ProjectAdmin', 'Master', 'Developer', 'Guest', 'Limited Guest'] },
       { schema: 'tools', name: 'gitea', displayName: 'Gitea', roles: ['Viewer', 'Editor', 'Admin'] },
       { schema: 'tools', name: 'grafana', displayName: 'Grafana', roles: ['Viewer', 'Editor', 'Admin'] },
@@ -171,53 +230,54 @@
       { schema: 'menus', name: 'storages', displayName: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
     ],
-    'db/menus/permissions': [
+    'db/permissions/menus': [
       {
         id: 0,
         schema: 'apis',
-        tenant: '',
-        resource: 'apps/view',
-        rules: [ { uriTemplate: 'api/v1/apps/*', methods: ['GET'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+        tenant: 'apps',
+        resource: 'view',
+        rules: [
+          { name: 'api/v1/apps/*', methods: ['GET'] },
+          { name: 'api/v1/apps/*/build/**', methods: ['GET'] },
+          { name: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
         ]
       },
       {
         id: 1,
-        tenant: '',
-        resource: 'apps/edit',
         schema: 'apis',
+        tenant: 'apps',
+        resource: 'edit',
         rules: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+          { name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT'] },
+          { name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST'] },
+          { name: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
         ]
       },
       {
         id: 2,
-        tenant: '',
-        resource: 'apps/delete',
         schema: 'apis',
+        tenant: 'apps',
+        resource: 'delete',
         rules: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'DELETE'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
+          { name: 'api/v1/apps/*', methods: ['GET'] },
+          { name: 'api/v1/apps/*/build/**', methods: ['GET'] },
+          { name: 'api/v1/apps/*/deploy/**', methods: ['GET'] },
         ]
       },
       {
         id: 3,
-        tenant: '',
-        resource: 'apps/admin',
         schema: 'apis',
+        tenant: 'apps',
+        resource: 'admin',
         rules: [
-          { uriTemplate: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-          { uriTemplate: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
-          { uriTemplate: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] },
+          { name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+          { name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
+          { name: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] },
         ]
       }
     ],
     /* Resource's Permissions */
-    'db/roles/permissions': [
+    'db/permissions/roles': [
       {
         id: 0,
         tenant: 'google',
@@ -297,6 +357,7 @@
 
   exports.apis = {
       get: get,
-      put: put
+      put: put,
+      post: post
   }
 })(window);

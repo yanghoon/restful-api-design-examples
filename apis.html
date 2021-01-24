@@ -17,7 +17,7 @@
         <v-container>
           <!-- Tabs -->
           <v-tabs v-model="tab" class="mb-6" background-color="grey lighten-4">
-            <template v-tab v-for="category in filterdCategories">
+            <template v-tab v-for="category in categories">
               <v-tab :key="category.name">{{ category.name }}</v-tab>
             </template>
           </v-tabs>
@@ -31,30 +31,26 @@
               <div class="d-flex align-center">
                 <!-- for Resource Kind -->
                 <div class="mr-6">
-                  <v-select v-model="form.kind" :items="kinds" item-text="displayName" return-object label="Kind" @select="tab = 0"></v-select>
+                  <v-select v-model="kind" :items="kinds" item-text="displayName" return-object disabled label="Kind" @select="tab = 0"></v-select>
                 </div>
-                <!--
-                <v-btn-toggle v-model="form.kind" mandatory dense color="blue accent-3" class="white my-5 mr-10">
-                  <v-btn v-for="kind in kinds" :key="kind.name" :value="kind" color="white" class="px-5">
-                    {{ kind.name }}
-                  </v-btn>
-                </v-btn-toggle>
-                -->
 
                 <!-- for Role -->
-                <template v-if="form.kind.name === 'role'">
+                <template v-if="kind.name === 'role'">
                   <div class="mr-6">
                     <v-select v-model="form.tenant" :items="tenants" item-text="displayName" return-object label="Tenant"></v-select>
                   </div>
-                  <div class="">
+                  <div>
                     <v-select v-model="form.role" :items="roles" item-text="displayName" return-object label="Role"></v-select>
                   </div>
                 </template>
 
                 <!-- for Menus -->
-                <template v-if="form.kind.name === 'menu'">
-                  <div class="">
+                <template v-if="kind.name === 'menu'">
+                  <div class="mr-6">
                     <v-select v-model="form.menu" :items="menus" item-text="displayName" return-object label="Menu"></v-select>
+                  </div>
+                  <div>
+                    <v-select v-model="form.verb" :items="form.menu.verbs || []" label="Rule"></v-select>
                   </div>
                 </template>
               </div>
@@ -65,7 +61,7 @@
           <v-data-table
             :headers="headers"
             :items="items"
-            :items-per-page="5"
+            :items-per-page="10"
             dense
             class="elevation-1"
           >
@@ -84,27 +80,31 @@
 
                 <div class="mt-8">
                   <!-- Controls (Kubernetes) -->
-                  <h5 v-if="category.name === 'kubernetes'">Kubernetes APIs</h5>
-                  <div v-if="category.name === 'kubernetes'" class="d-flex align-baseline mt-3">
-                    <div class="pa-0 mr-6">
-                      <v-select v-model="form.apiGroup" :items="kubeApis.apiGroups" item-text="apiGroup" dense label="API Group"></v-select>
+                  <template v-if="schema.name === 'kubernetes'">
+                    <h5>Kubernetes APIs</h5>
+                    <div class="d-flex align-baseline mt-3">
+                      <div class="pa-0 mr-6">
+                        <v-select v-model="form.apiGroup" :items="kubeApis.apiGroups" item-text="apiGroup" dense label="API Group"></v-select>
+                      </div>
+                      <div class="pa-0 mr-6">
+                        <v-select v-model="form.resource" :items="kubeApis.resources" item-text="resource" dense label="Resource"></v-select>
+                      </div>
+                      <div class="pa-0">
+                        <v-btn small color="info" @click="addKubernetesPermissions" class="mr-2">Add</v-btn>
+                        <v-btn small color="info" @click="dump">Dump</v-btn>
+                      </div>
                     </div>
-                    <div class="pa-0 mr-6">
-                      <v-select v-model="form.resource" :items="kubeApis.resources" item-text="resource" dense label="Resource"></v-select>
-                    </div>
-                    <div class="pa-0">
-                      <v-btn small color="info" @click="addKubernetesPermissions" class="mr-2">Add</v-btn>
-                      <v-btn small color="info" @click="dump">Dump</v-btn>
-                    </div>
-                  </div>
+                  </template>
 
                   <!-- Controls (Menus) -->
-                  <h5 v-if="category.name === 'menus'">Simulations</h5>
-                  <div v-if="category.name === 'menus'" class="d-flex align-baseline mt-3">
-                    <div class="pa-0">
-                      <v-btn small color="info" @click="dialog.acl.show = true">Test ACL</v-btn>
+                  <template v-if="schema.name === 'menus'">
+                    <h5>Simulations</h5>
+                    <div class="d-flex align-baseline mt-3">
+                      <div class="pa-0">
+                        <v-btn small color="info" @click="dialog.acl.show = true">Test ACL</v-btn>
+                      </div>
                     </div>
-                  </div>
+                  </template>
                 </div>
               </div>
             </template>
@@ -122,6 +122,10 @@
               {{ JSON.stringify(item[header.field], null, 2) }}
             </template>
           </v-data-table>
+
+          <v-snackbar v-model="snackbar.show" :timeout="snackbar.timeout" :color="snackbar.color">
+            {{ snackbar.text }}
+          </v-snackbar>
 
           <!-- Dialog (Dump YAML)-->
           <v-dialog v-model="dialog.code.show" width="45%" scrollable>
@@ -155,10 +159,10 @@
                 <h4 class="black--text">Role</h4>
                 <div class="d-flex align-baseline">
                   <div class="pa-0 mr-6">
-                    <v-select v-model="form.tenant" :items="tenants" item-text="name" item-value="id" label="Tenant" disabled></v-select>
+                    <v-select v-model="form.tenant" :items="tenants" item-text="displayName" label="Tenant" disabled></v-select>
                   </div>
                   <div class="pa-0">
-                    <v-select v-model="form.role" :items="roles" item-text="name" item-value="id" label="Role" disabled></v-select>
+                    <v-select v-model="form.role" :items="roles" item-text="displayName" label="Role" disabled></v-select>
                   </div>
                 </div>
 
@@ -223,23 +227,22 @@
       el: '#app',
       vuetify: new Vuetify(),
       data: function () {
-        const kinds = [
-          { name: 'role', displayName: 'Role', uri: 'api/tenants/${tenant}/roles/${role}/permissions/${schema}', schema: ['tools', 'kubernetes', 'menus'] },
-          { name: 'menu', displayName: 'Menu', uri: 'api/menus/${menu}/permissions/${schema}', schema: ['apis'] }
-        ]
         return {
           uris: {
             tenants: 'api/tenants',
             categories: 'api/permissions',
             menus: 'api/permissions/menus'
           },
-          kinds: kinds,
+          kinds: [
+            { name: 'role', displayName: 'Role', uri: 'api/tenants/${tenant}/roles/${role}/permissions/${schema}', schema: ['tools', 'kubernetes', 'menus'] },
+            { name: 'menu', displayName: 'Menu', uri: 'api/menus/${menu}/permissions/${schema}/${verb}', schema: ['apis'] }
+          ],
           tab: 0,
           form: {
-            kind: kinds[0],
             tenant: {},
             role: {},
             menu: {},
+            verb: {},
             apiGroup: null,
             resource: null,
             showChecked: false,
@@ -248,54 +251,58 @@
           addedItems: [],
           acl: {
             testCases: [
-              { tenant: 'Google', role: 'Admin', method: 'GET', uri: 'api/v1/resources/id' },
-              { tenant: 'Google', role: 'Admin', method: 'GET', uri: 'api/v1/resources/id' }
+              { tenant: 'google', role: 'admin',  method: 'GET',    uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'admin',  method: 'PUT',    uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'admin',  method: 'POST',   uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'admin',  method: 'DELETE', uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'member', method: 'GET',    uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'member', method: 'PUT',    uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'member', method: 'POST',   uri: 'api/v1/apps/app1' },
+              { tenant: 'google', role: 'member', method: 'DELETE', uri: 'api/v1/apps/app1' },
             ],
             logs: []
           },
           dialog: {
             code: { show: false, title: 'YAML', text: '' },
             acl: { show: false, title: 'Simulations - Access Control', text: '' }
+          },
+          snackbar: {
+            show: false,
+            timeout: 2000, // ms
+            text: '',
           }
         }
       },
       computed: {
+        kind: function() {
+          const schema = this.schema.name
+          return _.find(this.kinds, kind => kind.schema.includes(schema)) || {}
+        },
+        categories: function() {
+          return apis.get(this.uris.categories).data
+        },
         menus: function() {
           return apis.get(this.uris.menus).data
         },
         tenants: function() {
           return apis.get(this.uris.tenants).data
         },
+        schema: function() {
+          return this.categories[this.tab] || {}
+        },
         roles: function() {
           return apis.get(this.uriTemplate('roles')).data
-        },
-        categories: function() {
-          return apis.get(this.uris.categories).data
-        },
-        filterdCategories: function() {
-          const schema = this.form.kind.schema || []
-          return _.filter(this.categories, v => schema.includes(v.name)) || []
-        },
-        schema1: function() {
-          return this.filterdCategories[this.tab] || {}
         },
         rules: function() {
           return apis.get(this.uriTemplate('rules')).data || []
         },
-        category: function() {
-          return this.filterdCategories[this.tab] || {}
-        },
-        schema: function() {
-          return apis.get(this.uriTemplate('schema')).data || []
-        },
         permissions: function() {
-          // const role = this.form.role.name
           const uri = this.uriTemplate('permissions')
           const [permissions] = apis.get(uri).data || []
           return permissions || {}
         },
         headers: function() {
-          const rules = this.schema1.rules || []
+          const rules = this.schema.rules || []
           const names = _.map(rules, 'options')
 
           // Dynamic Columns (Checkbox)
@@ -325,21 +332,17 @@
           }
 
           if(this.form.showChecked) {
-            const values = _(this.schema1.rules).map('name').map(v => this.toHeader('value', v)).value()
+            const values = _(this.schema.rules).map('name').map(v => this.toHeader('value', v)).value()
             headers.push(...values)
           }
 
           return headers
         },
         items: function() {
-          // const uri = this.uriTemplate('permissions')
-          // const [permissions] = apis.get(uri).data || []
-          // let { rules: items } = permissions || {}
-          // this.permissions = permissions
           let { rules: items } = this.permissions || {}
 
-          if (this.schema1.type === 'fixed') {
-            for(const rule of this.schema1.rules) {
+          if (this.schema.type === 'fixed') {
+            for(const rule of this.schema.rules) {
               if (rule.type === 'multiple') {
                 // checkbox
                 const defaults = _.map(this.rules, v => Object.assign({}, v, { [rule.name]: [] }) )
@@ -357,7 +360,7 @@
           return _.unionBy(items, this.addedItems, 'name')
         },
         kubeApis: function() {
-          if (this.category.name !== 'kubernetes')
+          if (this.schema.name !== 'kubernetes')
             return {}
 
           global.schema = this.schema
@@ -370,24 +373,22 @@
         global.vm = this
       },
       methods: {
-        shortcut: function(keydown) {
-          debugger
-          console.log(keydown)
-        },
+        // shortcut: function(keydown) {
+        //   debugger
+        //   console.log(keydown)
+        // },
         uriTemplate: function(name) {
           const vars = {
             tenant: this.form.tenant.name,
             role: this.form.role.name,
             menu: this.form.menu.name,
-            schema: this.category.name,
-            category: this.category.name
+            verb: this.form.verb,
+            schema: this.schema.name
           }
           return {
             roles: this.template('api/tenants/${tenant}/roles', vars),
             rules: this.template('api/permissions/${schema}', vars),
-            schema: this.template('api/permissions/${category}', vars),
-            // permissions: this.template('api/tenants/${tenant}/roles/${role}/permissions/${category}', vars),
-            permissions: this.template(this.form.kind.uri, vars),
+            permissions: this.template(this.kind.uri, vars),
           }[name]
         },
         addKubernetesPermissions: function () {
@@ -396,25 +397,46 @@
           this.addedItems.push(selected)
         },
         putRolePermissions: function () {
-          const body = { ...this.permissions, rules: this.items }
+          const meta = {
+            role: {
+              schema: this.schema.name,
+              tenant: this.form.tenant.name,
+              resource: this.form.role.name,
+              ...this.permissions
+            },
+            menu: {
+              schema: this.schema.name,
+              tenant: this.form.menu.name,
+              resource: this.form.verb,
+              ...this.permissions
+            }
+          }[this.kind.name]
+
+          const body = { ...meta, rules: this.items }
           apis.put(this.uriTemplate('permissions'), body)
+
+          this.snackbar.color = 'primary'
+          this.snackbar.text = 'Saved'
+          this.snackbar.show = true
         },
         //
         template: function (template, options) {
           return _.template(template)(options)
         },
         toHeader: function (val, field) {
-          return { text: _.startCase(val), value: val, field: field }
+          const value = val
+          return { text: _.startCase(val), value, val, field }
         },
         toCheckboxHeader: function (val, field) {
-          return { text: _.startCase(val), value: 'checkbox', val: val, field: field }
+          const value = 'checkbox'
+          return { text: _.startCase(val), value, val, field }
         },
         toSelectHeader: function (val, field) {
-          return { text: _.startCase(val), value: 'select', val: val, field: field }
+          const value = 'select'
+          return { text: _.startCase(val), value, val, field }
         },
         //
         dump: function () {
-          // const permissions = _.filter(this.items, v => !_.isEmpty(v.verbs))
           const permissions = this.items
           const resources = _.groupBy(permissions, v => v.namespaced === true)
           const namespaced = resources['true']
@@ -477,10 +499,21 @@
           const args = [arr.length, 0].concat(_.map(cases, this.hasPermission))
           arr.splice.apply(arr, args)
 
-          this.dialog.acl.text = _.map(arr, log => this.template('${result} = ${method} "${uri}"  ; ${tenant}-${role}', log)).join('\n')
+          this.dialog.acl.text = _.map(arr, this.formattedLog).join('\n')
+        },
+        formattedLog: function (log) {
+          let { result, method, uri, tenant, role } = log
+          result = _.padEnd(result, 5)
+          method = _.padEnd(method, 6)
+          uri = _.padEnd(`"${uri}"`, 15)
+          return `${result}  =  ${method}  ${uri}\t; ${tenant} - ${role}`
         },
         hasPermission: function (req) {
-          req.result = 'DENY'
+          // { tenant, role, method, uri }
+          // == { 'google', 'admin', 'GET', 'api/v1/resources/id' }
+          // const uri = this.template('api/tenants/${tenant}/roles/${role}/permissions/${schema}', { ...req, schema: 'menus'})
+          // const menuPermissions = api.get(uri).data
+          req.result = apis.post('api/permissions/allowed', req) === true ? 'ALLOW' : 'DENY'
           return req
         }
       }
