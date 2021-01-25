@@ -1,0 +1,88 @@
+<!-- https://vuetifyjs.com/en/getting-started/installation/#usage-with-cdn -->
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+<body>
+  <div id="app">
+    <v-app>
+      <v-main>
+        <v-container>
+          <!--  -->
+          <v-tabs v-model="tab" class="mb-6">
+            <v-tab v-for="category in categories" :key="category">{{ category }}</v-tab>
+          </v-tabs>
+
+          <v-data-table
+            :headers="table.headers"
+            :items="table.items"
+            :items-per-page="5"
+            dense
+            class="elevation-1"
+          >
+            <!-- -->
+            <template #top="{ items, options, pagination }">
+              <div class="pa-2 ma-2">
+                <v-checkbox v-model="showChecked" label="Show Checked Values"></v-checkbox>
+              </div>
+            </template>
+            <!-- -->
+            <template #item.checkbox="{ item, header }">
+              <v-checkbox v-model="item.tags" :value="header.val"></v-checkbox>
+            </template>
+            <template #item.tags="scope" v-if="showChecked">
+              {{ JSON.stringify(scope.item.tags, null, null, 2) }}
+            </template>
+          </v-data-table>
+        </v-container>
+      </v-main>
+    </v-app>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.x/lodash.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      vuetify: new Vuetify(),
+      data: function () {
+        return {
+          // table: { headers, items },
+          categories: ['food', 'menus', 'kubernetes'],
+          tab: '',
+          showChecked: true
+        }
+      },
+      computed: {
+        category: function() {
+          return this.categories[this.tab];
+        },
+        table: function() {
+          const ret = storage.fetch(this.category);
+          const { headers, items } = ret;
+
+          // Dynamic Columns (Checkbox)
+          // TODO: Order = [gluten-free, low-fat, salt-free, others]
+          const checkboxes = _(items).map('tags').flatten().uniq().value();
+          const checked = this.showChecked ? {text: 'Tags', value: 'tags'} : {};
+          ret.headers = _.concat(headers, _.map(checkboxes, this.toCheckboxHeader), checked);
+
+          console.log(ret)
+          return ret;
+        }
+      },
+      methods: {
+        toCheckboxHeader: function (val) {
+          return { text: _.startCase(val), val: val, value: 'checkbox' }
+        }
+      }
+    })
+  </script>
+</body>
+</html>
