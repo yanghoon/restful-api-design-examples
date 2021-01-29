@@ -88,6 +88,61 @@
     console.groupCollapsed('POST ' + uri)
     console.log('body', JSON.parse(JSON.stringify(body)))
 
+    /**
+     * [URI Templates]
+     * # Core Resource
+     * /api/{version}/{resource}         -> /api/{resource}
+     * /api/{version}/{resource}/{name}  -> /api/{resource}
+     * 
+     * # Tenant Resource
+     * /api/{version}/tenants/{tenant}/{resource}               -> /api/tenants/{resource}
+     * /api/{version}/tenants/{tenant}/{resource}/{name}        -> /api/tenants/{resource}
+     * /api/{version}/tenants/{tenant}/{resource}/{name}/{sub}  -> /api/tenants/{resource}/{sub}
+     * 
+     * # Proxy Resource
+     * /{service}/api/{version}/tenants/{tenant}/{resource}         -> /{service}/api/tenants/{resource}
+     * /{service}/api/{version}/tenants/{tenant}/{resource}/{name}  -> /{service}/api/tenants/{resource}
+     * 
+     * [URI Abbreviation]
+     * api/v1/tenants/-/apps/-           -> api/tenants/apps
+     * api/v1/tenants/facebook/apps      -> api/tenants/apps
+     * api/v1/tenants/google/apps        -> api/tenants/apps
+     * api/v1/tenants/google/apps/docs   -> api/tenants/apps
+     * api/v1/tenants/google/apps/drive  -> api/tenants/apps
+     *
+     * api/v1/tenants/-/apps/-/builds/--        -> api/tenants/apps/builds
+     * api/v1/tenants/google/apps/drive/builds  -> api/tenants/apps/builds
+     * api/v1/tenants/google/apps/docs/builds   -> api/tenants/apps/builds
+     *
+     * api/v1/tenants/-/apps/-/builds/--                         -> api/tenants/apps/builds
+     * api/v1/tenants/google/apps/drive/builds/10                -> api/tenants/apps/builds
+     * api/v1/tenants/google/apps/docs/builds/0.9.0-SNAPSHOT-12  -> api/tenants/apps/builds
+     * 
+     * api/v1/tenants/-/apps/-/builds/-/logs                     -> api/tenants/apps/builds/logs
+     * api/v1/tenants/google/apps/drive/builds/10/logs           -> api/tenants/apps/builds ??
+     * api/v1/tenants/google/apps/drive/builds/11/logs           -> api/tenants/apps/builds ??
+     * 
+     * 
+     * [Pseudo Code]
+     * const schema = 'apis'
+     * const method = req.method
+     * const { version, tenant, namespace, resource, name } = toVars(req.url)
+     * const roles = session.token.roles
+     * 
+     * mappings = db.permission_mapping.find({
+     *   schema,
+     *   tenant,
+     *   namespace,
+     *   rules: {
+     *     methods: [method],
+     *     abbr: toAbbr(req.url)
+     *   }
+     * })
+     * 
+     * const cond = new AntMatcher(req.url)
+     * const allowed = mappings.filter(cond).map('name')
+     * return allowed.intersection(roles) is not empty
+     */
     if (uri === 'api/permissions/allowed') {
       const { tenant, role, method, uri: targetUri } = body
       const db = fetch()
@@ -133,25 +188,45 @@
       { name: 'member', tenant: 'google', displayName: 'Member' }
     ],
     /**
-     * api/permissions:
-     * - name:           # api/permissions/{schema}
+     * # db.permission_schema
+     * api/permissions/schemas:
+     * - name:             # api/permissions/{schema}
      *   displayName:
-     *   type: fixed || searchable
-     *   attrs:          # like annotations
-     *     columns: []
+     *   type:             # ['fixed', 'searchable']
+     *   # attrs:          # like annotations
+     *   #  columns: []
      *   rules:
-     *   - name:         # name of selected value(s)
-     *     options:      # option field name
-     *     type: single || multiple,
+     *   - name:           # name of selected value(s)
+     *     options:        # option field name
+     *     type:           # ['single', 'multiple']
      * 
-     * api/permissions/{schema}/rules:
+     * # db.permission_rules
+     * api/permissions/schemas/{schema}/rules:
      * - name:
      *   displayName:
-     *   attrs_columns_0:
-     *   attrs_columns_1:
-     *   rules_0_options:
-     *   rules_1_options:
+     *   schema:
+     *   attr1:            # schema.attrs.columns[1]
+     *   attr2:            # schema.attrs.columns[0]
+     *   options1:         # schema.rules[1].options
+     *   options2:         # schema.rules[0].options
      * 
+     * [Version 2]
+     * # db.permission_mapping
+     * api/permissions/mapping/{type}/{name}/{schema}:
+     *   id:
+     *   type:             # type of resource (role, menu, ...)
+     *   name:             # name of resource (tenant.role, menu.verb, ...)
+     *   schema:           # name of schema
+     *   rules:
+     *   - name1: ''       # rules[0].name (single)
+     *     name2: []       # rules[1].name (multiple)
+     *     ref:            # schema.rule (Ref.)
+     *     #   or
+     *     # displayName:  # schema.rule (Dup.)
+     *     # attr1:
+     *     # options1:
+     * 
+     * [Version 0]
      * api/{resources}/{resource}/permissions/{schema}:
      *   id:
      *   resource:             # name of resource
