@@ -73,7 +73,7 @@
 
                     <div class="d-flex align-center mt-2">
                       <div>
-                        <v-btn small color="red light-5" @click="">Save</v-btn>
+                        <v-btn small color="red light-5" @click="putMenus">Save</v-btn>
                       </div>
                     </div>
                   </v-card>
@@ -86,6 +86,7 @@
                     :item-value="(e) => `${e.name} - ${e.verb}`"
                     :item-text="(e) => `${e.displayName} - ${e.verb}`"
                     placeholder="Select Permission"
+                    @change="putMenus(item)"
                     >
                   </v-select>
                 </template>
@@ -339,7 +340,8 @@
           uris: {
             tenants: 'api/tenants',
             categories: 'api/permissions',
-            menus: 'api/permissions/menus'
+            menuRules: 'api/permissions/menus',
+            menus: 'api/menus',
           },
           kinds: [
             { name: 'role', displayName: 'Role', uri: 'api/tenants/${tenant}/roles/${role}/permissions/${schema}', schema: ['tools', 'kubernetes', 'menus'] },
@@ -395,7 +397,7 @@
           return apis.get(this.uris.categories).data
         },
         menus: function() {
-          return apis.get(this.uris.menus).data
+          return apis.get(this.uris.menuRules).data
         },
         tenants: function() {
           return apis.get(this.uris.tenants).data
@@ -418,9 +420,8 @@
           return permissions || {}
         },
         me: function() {
-          return {
-            menus: apis.get('api/menus').data
-          }
+          const uri = this.uriTemplate('me')
+          return apis.get(uri).data
         },
         settings: function() {
           const menus = this.menus
@@ -439,7 +440,7 @@
                 { text: 'Permission (Menu)', value: 'permission.name' },
                 { text: 'Permission (Verb)', value: 'permission.verb' },
               ],
-              items: apis.get('api/menus').data,
+              items: apis.get(this.uris.menus).data,
               permissions
             },
             permissions: {
@@ -537,12 +538,14 @@
             verb: this.form.verb,
             schema: this.schema.name,
             userTenant: this.user.tenant.name,
+            userRole: this.user.role.name,
           }
           return {
             roles: this.template('api/tenants/${tenant}/roles', vars),
-            userRoles: this.template('api/tenants/${userTenant}/roles', vars),
             rules: this.template('api/permissions/${schema}', vars),
             permissions: this.template(this.kind.uri, vars),
+            userRoles: this.template('api/tenants/${userTenant}/roles', vars),
+            me: this.template('api/me?tenant=${userTenant}&role=${userRole}', vars),
           }[name]
         },
         addKubernetesPermissions: function () {
@@ -573,9 +576,14 @@
           this.snackbar.text = 'Saved'
           this.snackbar.show = true
         },
-        permissionComparator: function(a, b) {
-          debugger
-          return a.name === b.name && a.verb === b.verb
+        putMenus: function (body) {
+          // const body = this.settings.menus.items
+          // return alert(JSON.stringify(body, null, 2))
+          apis.put(this.uris.menus + '/' + body.name, body)
+
+          this.snackbar.color = 'primary'
+          this.snackbar.text = 'Changed'
+          this.snackbar.show = true
         },
         //
         template: function (template, options) {

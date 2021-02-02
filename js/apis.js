@@ -34,6 +34,25 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }
   // for Http Simulations
+  function handleMe ({ vars, uri, method, table }) {
+    if (method === 'GET') {
+      const db = fetch()
+
+      let where = { ...vars, schema: 'menus'}
+      let menus = db[table]
+      let { rules } = _.find(db['db.permission_mappings'], where) || { rules: [] }
+
+      menus = _.filter(menus, (menu) => {
+        const { permission } = menu
+        return _.find(rules, (rule) => {
+          return rule.name == permission.name && rule.verbs.includes(permission.verb)
+        })
+      })
+
+      return { menus }
+    }
+  }
+  // for Http Simulations
   function resolve (uri) {
     const routes = {
       // 'api/menus/(?<menu>[^/]+)/permissions/(?<schema>[^/]+)/(?<verb>[^/]+)': ['db.permission_mappings'],
@@ -41,10 +60,12 @@
       'api/tenants/(?<tenant>[^/]+)/roles/(?<resource>[^/]+)/permissions/(?<schema>[^/]+)': ['db.permission_mappings'],
       'api/tenants/(?<tenant>[^/]+)/roles': ['db/roles'],
       'api/tenants': ['db/tenants'],
+      'api/menus/(?<name>[^/]+)': ['db/menus'],
       'api/menus': ['db/menus'],
       'api/permissions/rules': ['db.permission_rules'],
       'api/permissions/(?<schema>[^/]+)': ['db.permission_rules'],
-      'api/permissions': ['db.permission_schemas']
+      'api/permissions': ['db.permission_schemas'],
+      'api/me\\?tenant=(?<tenant>[^&]+)&role=(?<resource>.+)': ['db/menus', handleMe],
     }
 
     const uriTemplate = _.find(_.keys(routes), u => new RegExp(u + '$').test(uri))
@@ -57,14 +78,22 @@
     console.groupCollapsed('GET ' + uri)
 
     const { uriTemplate, vars, table, handler } = resolve(uri)
-    let rows = fetch()[table]
-    rows = _.filter(rows, vars)
+    let data
+    if (handler !== undefined) {
+      data = handler({ table, vars, uri, method: 'GET' })
 
-    console.log('path-variables', vars)
-    console.log(table, rows)
+      console.log('path-variables', vars)
+      console.log(table, data)
+    } else {
+      let rows = fetch()[table]
+      data = rows = _.filter(rows, vars)
+
+      console.log('path-variables', vars)
+      console.log(table, rows)
+    }
+
     console.groupEnd()
-
-    return { status: 200, data: rows }
+    return { status: 200, data }
   }
   function put (uri, body) {
     console.groupCollapsed('PUT ' + uri)
@@ -183,7 +212,7 @@
     /* Non-permission Resources */
     'db/tenants': [
       { name: 'google', displayName: 'Google' },
-      { name: 'facebook', displayName: 'Facebook' },
+      // { name: 'facebook', displayName: 'Facebook' },
       { name: 'system', displayName: 'System' },
     ],
     'db/roles': [
@@ -192,12 +221,13 @@
       { name: 'admin', tenant: 'system', displayName: 'Administrator' }
     ],
     'db/menus': [
-      { name: 'apps', displayName: 'Applications', permission: { name: 'apps', verb: 'view' } },
-      { name: 'databases', displayName: 'Databases', permission: { name: 'databases', verb: 'view' } },
-      { name: 'storages', displayName: 'Storages', permission: { name: 'storages', verb: 'view' } },
-      { name: 'messages', displayName: 'Messages', permission: { name: 'messages', verb: 'view' } },
-      { name: 'menus', displayName: 'Menus', divider: true, permission: { name: 'menus', verb: 'view' } },
-      { name: 'permissions', displayName: 'Permissions', permission: { name: 'permissions', verb: 'view' } },
+      { id: 0, name: 'apps', displayName: 'Applications', permission: { name: 'apps', verb: 'view' } },
+      { id: 1, name: 'databases', displayName: 'Databases', permission: { name: 'databases', verb: 'view' } },
+      { id: 2, name: 'storages', displayName: 'Storages', permission: { name: 'storages', verb: 'view' } },
+      { id: 3, name: 'messages', displayName: 'Messages', permission: { name: 'messages', verb: 'view' } },
+      { id: 4, name: 'settings', displayName: 'Settings', permission: {} },
+      { id: 5, name: 'menus', displayName: 'Menus', divider: true, permission: { name: 'menus', verb: 'view' } },
+      { id: 6, name: 'permissions', displayName: 'Permissions', permission: { name: 'permissions', verb: 'view' } },
     ],
     /**
      * # db.permission_schema
@@ -316,6 +346,7 @@
       { schema: 'menus', name: 'databases', displayName: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'storages', displayName: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { schema: 'menus', name: 'settings', displayName: 'Settings', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'menus', displayName: 'Menus', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'permissions', displayName: 'Permissions', verbs: ['view', 'edit', 'delete', 'admin'] },
     ],
@@ -395,10 +426,10 @@
         tenant: 'google',
         resource: 'admin',
         rules:  [
-          { name: 'apps', displayName: 'Applications', verbs: ['admin'] },
-          { name: 'databases', displayName: 'Databases', verbs: ['admin'] },
-          { name: 'storages', displayName: 'Storages', verbs: ['admin'] },
-          { name: 'messages', displayName: 'MessageQueues', verbs: ['admin'] }
+          { name: 'apps', displayName: 'Applications', verbs: ['view', 'admin'] },
+          { name: 'databases', displayName: 'Databases', verbs: ['view', 'admin'] },
+          { name: 'storages', displayName: 'Storages', verbs: ['view', 'admin'] },
+          { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'admin'] }
         ]
       },
       {
@@ -442,12 +473,13 @@
         tenant: 'system',
         resource: 'admin',
         rules: [
-          { name: 'apps', displayName: 'Applications', verbs: ['view', 'edit', 'delete'] },
-          { name: 'databases', displayName: 'Databases', verbs: ['view', 'edit'] },
-          { name: 'storages', displayName: 'Storages', verbs: ['view', 'edit'] },
-          { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit'] },
-          { name: 'menus', displayName: 'Menus', verbs: ['view', 'edit'] },
-          { name: 'permissions', displayName: 'Permissions', verbs: ['view', 'edit'] },
+          { name: 'apps', displayName: 'Applications', verbs: ['view', 'edit', 'delete', 'admin'] },
+          { name: 'databases', displayName: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
+          { name: 'storages', displayName: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
+          { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] },
+          { name: 'settings', displayName: 'Settings', verbs: ['view', 'edit', 'delete', 'admin'] },
+          { name: 'menus', displayName: 'Menus', verbs: ['view', 'edit', 'delete', 'admin'] },
+          { name: 'permissions', displayName: 'Permissions', verbs: ['view', 'edit', 'delete', 'admin'] },
         ]
       }
     ]
