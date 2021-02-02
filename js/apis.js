@@ -36,13 +36,15 @@
   // for Http Simulations
   function resolve (uri) {
     const routes = {
-      // 'api/menus/(?<menu>[^/]+)/permissions/(?<schema>[^/]+)/(?<verb>[^/]+)': ['db/permissions/menus'],
-      'api/menus/(?<tenant>[^/]+)/permissions/(?<schema>[^/]+)/(?<resource>[^/]+)': ['db/permissions/menus'],
-      'api/tenants/(?<tenant>[^/]+)/roles/(?<resource>[^/]+)/permissions/(?<schema>[^/]+)': ['db/permissions/roles'],
+      // 'api/menus/(?<menu>[^/]+)/permissions/(?<schema>[^/]+)/(?<verb>[^/]+)': ['db.permission_mappings'],
+      'api/menus/(?<tenant>[^/]+)/permissions/(?<schema>[^/]+)/(?<resource>[^/]+)': ['db.permission_mappings'],
+      'api/tenants/(?<tenant>[^/]+)/roles/(?<resource>[^/]+)/permissions/(?<schema>[^/]+)': ['db.permission_mappings'],
       'api/tenants/(?<tenant>[^/]+)/roles': ['db/roles'],
       'api/tenants': ['db/tenants'],
-      'api/permissions/(?<schema>[^/]+)': ['db/permissions/rules'],
-      'api/permissions': ['db/permissions']
+      'api/menus': ['db/menus'],
+      'api/permissions/rules': ['db.permission_rules'],
+      'api/permissions/(?<schema>[^/]+)': ['db.permission_rules'],
+      'api/permissions': ['db.permission_schemas']
     }
 
     const uriTemplate = _.find(_.keys(routes), u => new RegExp(u + '$').test(uri))
@@ -147,11 +149,11 @@
       const { tenant, role, method, uri: targetUri } = body
       const db = fetch()
 
-      const menus = _.filter(db['db/permissions/roles'], { tenant, resource: role, schema: 'menus' })
+      const menus = _.filter(db['db.permission_mappings'], { tenant, resource: role, schema: 'menus' })
       for(const menu of menus) {
         for(const rule of menu.rules) {
           for(const verb of rule.verbs) {
-            const apis = _.filter(db['db/permissions/menus'], { tenant: rule.name, resource: verb })
+            const apis = _.filter(db['db.permission_mappings'], { tenant: rule.name, resource: verb })
 
             for(const api of _.get(apis, '[0].rules', [])) {
               const pattern = api.name
@@ -182,10 +184,20 @@
     'db/tenants': [
       { name: 'google', displayName: 'Google' },
       { name: 'facebook', displayName: 'Facebook' },
+      { name: 'system', displayName: 'System' },
     ],
     'db/roles': [
       { name: 'admin', tenant: 'google', displayName: 'Admin' },
-      { name: 'member', tenant: 'google', displayName: 'Member' }
+      { name: 'member', tenant: 'google', displayName: 'Member' },
+      { name: 'admin', tenant: 'system', displayName: 'Administrator' }
+    ],
+    'db/menus': [
+      { name: 'apps', displayName: 'Applications', permission: { name: 'apps', verb: 'view' } },
+      { name: 'databases', displayName: 'Databases', permission: { name: 'databases', verb: 'view' } },
+      { name: 'storages', displayName: 'Storages', permission: { name: 'storages', verb: 'view' } },
+      { name: 'messages', displayName: 'Messages', permission: { name: 'messages', verb: 'view' } },
+      { name: 'menus', displayName: 'Menus', divider: true, permission: { name: 'menus', verb: 'view' } },
+      { name: 'permissions', displayName: 'Permissions', permission: { name: 'permissions', verb: 'view' } },
     ],
     /**
      * # db.permission_schema
@@ -241,7 +253,7 @@
      *     rules_1_name: []    # multiple
      */
     /* Permissions Schema */
-    'db/permissions': [
+    'db.permission_schemas': [
       {
         name: 'tools',
         displayName: 'Tools',
@@ -285,7 +297,7 @@
       }
     ],
     /* Permissions Rules */
-    'db/permissions/rules': [
+    'db.permission_rules': [
       { schema: 'apis', name: 'api/v1/apps/*', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
       { schema: 'apis', name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
       { schema: 'apis', name: 'api/v1/apps/*/pipelines/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
@@ -303,9 +315,12 @@
       { schema: 'menus', name: 'apps', displayName: 'Applications', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'databases', displayName: 'Databases', verbs: ['view', 'edit', 'delete', 'admin'] },
       { schema: 'menus', name: 'storages', displayName: 'Storages', verbs: ['view', 'edit', 'delete', 'admin'] },
-      { schema: 'menus', name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] }
+      { schema: 'menus', name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { schema: 'menus', name: 'menus', displayName: 'Menus', verbs: ['view', 'edit', 'delete', 'admin'] },
+      { schema: 'menus', name: 'permissions', displayName: 'Permissions', verbs: ['view', 'edit', 'delete', 'admin'] },
     ],
-    'db/permissions/menus': [
+    /* Resource's Permissions */
+    'db.permission_mappings': [
       {
         id: 0,
         schema: 'apis',
@@ -349,15 +364,12 @@
           { name: 'api/v1/apps/*/build/**', methods: ['GET', 'POST', 'PUT', 'DELETE'] },
           { name: 'api/v1/apps/*/deploy/**', methods: ['GET', 'POST', 'PUT'] },
         ]
-      }
-    ],
-    /* Resource's Permissions */
-    'db/permissions/roles': [
+      },
       {
-        id: 0,
+        id: 4,
+        schema: 'tools',
         tenant: 'google',
         resource: 'admin',
-        schema: 'tools',
         rules: [
           { name: 'harbor', displayName: 'Harbor', role: 'Master' },
           { name: 'gitea', displayName: 'Gitea', role: 'Admin' },
@@ -366,10 +378,10 @@
         ]
       },
       {
-        id: 1,
+        id: 5,
+        schema: 'kubernetes',
         tenant: 'google',
         resource: 'admin',
-        schema: 'kubernetes',
         rules: [
           { name: 'apps/pods', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
           { name: 'apps/deployments', apiGroup: 'apps', resource: 'deployments', namespaced: true, verbs: ['list', 'get', 'create', 'update', 'patch', 'watch', 'delete', 'deletecollection'] },
@@ -378,10 +390,10 @@
         ]
       },
       {
-        id: 2,
+        id: 6,
+        schema: 'menus',
         tenant: 'google',
         resource: 'admin',
-        schema: 'menus',
         rules:  [
           { name: 'apps', displayName: 'Applications', verbs: ['admin'] },
           { name: 'databases', displayName: 'Databases', verbs: ['admin'] },
@@ -390,10 +402,10 @@
         ]
       },
       {
-        id: 3,
+        id: 7,
+        schema: 'tools',
         tenant: 'google',
         resource: 'member',
-        schema: 'tools',
         rules: [
           { name: 'harbor', displayName: 'Harbor', role: 'Developer' },
           { name: 'gitea', displayName: 'Gitea', role: 'Editor' },
@@ -402,10 +414,10 @@
         ]
       },
       {
-        id: 4,
+        id: 8,
+        schema: 'kubernetes',
         tenant: 'google',
         resource: 'member',
-        schema: 'kubernetes',
         rules: [
           { name: 'apps/pods', apiGroup: 'apps', resource: 'pods', namespaced: true, verbs: ['list', 'get', 'watch'] },
           { name: 'apps/deployments', apiGroup: 'apps', resource: 'deployments', namespaced: true, verbs: ['list', 'get', 'watch'] },
@@ -413,15 +425,29 @@
         ]
       },
       {
-        id: 5,
+        id: 9,
+        schema: 'menus',
         tenant: 'google',
         resource: 'member',
-        schema: 'menus',
         rules: [
           { name: 'apps', displayName: 'Applications', verbs: ['view', 'edit', 'delete'] },
           { name: 'databases', displayName: 'Databases', verbs: ['view', 'edit'] },
           { name: 'storages', displayName: 'Storages', verbs: ['view', 'edit'] },
           { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit'] }
+        ]
+      },
+      {
+        id: 10,
+        schema: 'menus',
+        tenant: 'system',
+        resource: 'admin',
+        rules: [
+          { name: 'apps', displayName: 'Applications', verbs: ['view', 'edit', 'delete'] },
+          { name: 'databases', displayName: 'Databases', verbs: ['view', 'edit'] },
+          { name: 'storages', displayName: 'Storages', verbs: ['view', 'edit'] },
+          { name: 'messages', displayName: 'MessageQueues', verbs: ['view', 'edit'] },
+          { name: 'menus', displayName: 'Menus', verbs: ['view', 'edit'] },
+          { name: 'permissions', displayName: 'Permissions', verbs: ['view', 'edit'] },
         ]
       }
     ]
